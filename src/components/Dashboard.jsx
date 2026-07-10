@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause } from 'lucide-react';
+import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause, Sun, Moon } from 'lucide-react';
 
 import { StockfishService } from '../services/stockfish';
 import { audioService } from '../services/audio';
@@ -70,6 +70,21 @@ export default function Dashboard() {
 
   // Modals
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+
+  // Theme mode (Light / Dark)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('satranj-theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('satranj-theme', newTheme);
+  };
 
 
 
@@ -376,10 +391,24 @@ export default function Dashboard() {
 
   if (!gameStarted) {
     return (
-      <div className="setup-screen-container">
+      <div className="setup-screen-container" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 10 }}>
+          <button 
+            className="btn btn-secondary btn-icon" 
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
         <div className="setup-card">
           <div className="setup-logo-group">
-            <Award size={48} className="setup-logo-icon" />
+            <img 
+              src="https://pub-c1d80f0f7327493997a3c1285f43a9ea.r2.dev/amrit_logo.png" 
+              alt="Satranj Logo" 
+              className="setup-logo-icon" 
+              style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+            />
             <h1 className="setup-title">SATRANJ</h1>
             <p className="setup-subtitle">Select your battle parameters to begin</p>
           </div>
@@ -502,13 +531,25 @@ export default function Dashboard() {
       {/* Header */}
       <header className="app-header">
         <div className="header-title-group">
-          <Award size={32} className="header-logo-icon" />
+          <img 
+            src="https://pub-c1d80f0f7327493997a3c1285f43a9ea.r2.dev/amrit_logo.png" 
+            alt="Satranj Logo" 
+            className="header-logo-icon" 
+            style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+          />
           <div>
             <h1 className="app-title">SATRANJ</h1>
             <span className="app-version">v1.0 GPLv3</span>
           </div>
         </div>
         <div className="header-actions">
+          <button 
+            className="btn btn-secondary btn-icon" 
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <button 
             className="btn btn-secondary btn-icon" 
             title="Toggle sound"
@@ -733,7 +774,12 @@ export default function Dashboard() {
       {showGameOverModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <Award size={48} className="header-logo-icon" style={{ margin: '0 auto 1rem', display: 'block' }} />
+            <img 
+              src="https://pub-c1d80f0f7327493997a3c1285f43a9ea.r2.dev/amrit_logo.png" 
+              alt="Satranj Logo" 
+              className="header-logo-icon" 
+              style={{ width: '48px', height: '48px', objectFit: 'contain', margin: '0 auto 1rem', display: 'block' }}
+            />
             <h2 className="modal-title">{getGameOverTitle()}</h2>
             <p className="modal-subtitle">{getGameOverSub()}</p>
             <button className="btn btn-primary" onClick={resetGame}>

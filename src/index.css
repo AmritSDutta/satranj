@@ -27,6 +27,41 @@
   
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Select inputs & sliders background */
+  --bg-select: #1e293b;
+
+  /* Widget background tokens for light/dark mode adaptability */
+  --bg-widget: rgba(15, 23, 42, 0.4);
+  --bg-widget-hover: rgba(15, 23, 42, 0.6);
+  --bg-license-box: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme='light'] {
+  --bg-dark-base: #f8fafc;
+  --bg-dark-gradient: radial-gradient(circle at 50% 50%, #e2e8f0 0%, #f8fafc 100%);
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --bg-card-hover: rgba(241, 245, 249, 0.95);
+  --border-color: rgba(99, 102, 241, 0.22);
+  --border-color-glow: rgba(99, 102, 241, 0.55);
+  
+  --color-primary: #4f46e5; /* Indigo */
+  --color-primary-glow: rgba(79, 70, 229, 0.2);
+  --color-secondary: #0891b2; /* Cyan */
+  --color-secondary-glow: rgba(8, 145, 178, 0.2);
+  
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+
+  --bg-select: #f1f5f9;
+  --bg-widget: rgba(241, 245, 249, 0.65);
+  --bg-widget-hover: rgba(226, 232, 240, 0.85);
+  --bg-license-box: rgba(241, 245, 249, 0.8);
 }
 
 * {
@@ -248,7 +283,7 @@ body {
   align-items: center;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-widget);
 }
 
 .player-info {
@@ -408,7 +443,7 @@ body {
 .mode-selectors {
   display: flex;
   gap: 0.5rem;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-widget);
   padding: 0.3rem;
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -453,7 +488,7 @@ body {
 }
 
 .select-input {
-  background: #1e293b;
+  background: var(--bg-select);
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 0.4rem 0.75rem;
@@ -491,7 +526,7 @@ body {
   width: 100%;
   height: 6px;
   border-radius: 3px;
-  background: #1e293b;
+  background: var(--bg-select);
   outline: none;
 }
 
@@ -521,7 +556,7 @@ body {
 .clock-card {
   padding: 0.75rem;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-widget);
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -779,7 +814,7 @@ body {
 }
 
 .license-box {
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--bg-license-box);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0.75rem;
@@ -916,7 +951,7 @@ body {
   gap: 0.6rem;
   padding: 1.25rem;
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-widget);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
@@ -924,7 +959,7 @@ body {
 }
 
 .setup-choice-card:hover {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-widget-hover);
   border-color: rgba(99, 102, 241, 0.3);
   color: var(--text-main);
   transform: translateY(-2px);
@@ -962,7 +997,7 @@ body {
   gap: 0.4rem;
   padding: 1rem;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-widget);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
@@ -970,7 +1005,7 @@ body {
 }
 
 .color-picker-card:hover {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-widget-hover);
   border-color: rgba(6, 182, 212, 0.3);
   color: var(--text-main);
 }
@@ -1033,7 +1068,7 @@ body {
   justify-content: center;
   padding: 0.75rem;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-widget);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
@@ -1043,7 +1078,7 @@ body {
 }
 
 .preset-picker-card:hover {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-widget-hover);
   border-color: var(--border-color-glow);
   color: var(--text-main);
 }
