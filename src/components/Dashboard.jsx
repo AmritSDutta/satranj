@@ -185,7 +185,8 @@ export default function Dashboard() {
         setGame(newGame);
         setFen(newGame.fen());
         
-        const newHistory = newGame.history({ verbose: true });
+        // Append the new move result to the existing move history slice
+        const newHistory = [...history.slice(0, activeMoveIndex), result];
         setHistory(newHistory);
 
         // Update history FENs
