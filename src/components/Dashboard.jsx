@@ -441,27 +441,6 @@ export default function Dashboard() {
               <span className="setup-row-title">Time Control</span>
               <div className="preset-picker-group">
                 <div 
-                  className={`preset-picker-card ${timePreset === '1+0' ? 'active' : ''}`}
-                  onClick={() => setTimePreset('1+0')}
-                >
-                  <span className="preset-picker-name">1 + 0</span>
-                  <span className="preset-picker-desc">Bullet</span>
-                </div>
-                <div 
-                  className={`preset-picker-card ${timePreset === '3+2' ? 'active' : ''}`}
-                  onClick={() => setTimePreset('3+2')}
-                >
-                  <span className="preset-picker-name">3 + 2</span>
-                  <span className="preset-picker-desc">Blitz</span>
-                </div>
-                <div 
-                  className={`preset-picker-card ${timePreset === '5+0' ? 'active' : ''}`}
-                  onClick={() => setTimePreset('5+0')}
-                >
-                  <span className="preset-picker-name">5 + 0</span>
-                  <span className="preset-picker-desc">Blitz</span>
-                </div>
-                <div 
                   className={`preset-picker-card ${timePreset === '10+0' ? 'active' : ''}`}
                   onClick={() => setTimePreset('10+0')}
                 >
