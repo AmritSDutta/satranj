@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause, Sun, Moon } from 'lucide-react';
+import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause, Sun, Moon, X } from 'lucide-react';
 
 import { StockfishService } from '../services/stockfish';
 import { audioService } from '../services/audio';
@@ -84,6 +84,24 @@ export default function Dashboard() {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     localStorage.setItem('satranj-theme', newTheme);
+  };
+
+  const handleCloseTab = () => {
+    // Terminate Stockfish Web Worker
+    if (stockfishRef.current) {
+      stockfishRef.current.terminate();
+    }
+    
+    // Close Web Audio Context
+    audioService.close();
+
+    // Close the browser window
+    window.close();
+
+    // Fallback: If blocked by browser policies, redirect to empty blank page
+    setTimeout(() => {
+      window.location.href = 'about:blank';
+    }, 100);
   };
 
 
@@ -392,13 +410,20 @@ export default function Dashboard() {
   if (!gameStarted) {
     return (
       <div className="setup-screen-container" style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 10 }}>
+        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 10, display: 'flex', gap: '0.5rem' }}>
           <button 
             className="btn btn-secondary btn-icon" 
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             onClick={toggleTheme}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button 
+            className="btn btn-danger btn-icon" 
+            title="Close Tab"
+            onClick={handleCloseTab}
+          >
+            <X size={18} />
           </button>
         </div>
         <div className="setup-card">
@@ -549,6 +574,13 @@ export default function Dashboard() {
             onClick={toggleTheme}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button 
+            className="btn btn-danger btn-icon" 
+            title="Close Tab"
+            onClick={handleCloseTab}
+          >
+            <X size={18} />
           </button>
           <button 
             className="btn btn-secondary btn-icon" 

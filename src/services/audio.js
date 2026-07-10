@@ -103,6 +103,13 @@ class AudioService {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.5);
   }
+
+  close() {
+    if (this.ctx) {
+      this.ctx.close();
+      this.ctx = null;
+    }
+  }
 }
 
 export const audioService = new AudioService();
