@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut } from 'lucide-react';
+import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause } from 'lucide-react';
 
 import { StockfishService } from '../services/stockfish';
 import { audioService } from '../services/audio';
@@ -65,6 +65,8 @@ export default function Dashboard() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameOverReason, setGameOverReason] = useState('');
   const [winner, setWinner] = useState(''); // 'w', 'b', or 'draw'
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Modals
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -95,8 +97,8 @@ export default function Dashboard() {
           const bestMove = parts[1];
           if (bestMove && bestMove !== '(none)') {
             const aiColor = assignedColor === 'w' ? 'b' : 'w';
-            // ONLY execute AI moves when it is actually the AI's turn (in AI mode)
-            if (gameMode === 'ai' && game.turn() === aiColor) {
+            // ONLY execute AI moves when it is actually the AI's turn (in AI mode) and the game is not paused
+            if (gameMode === 'ai' && game.turn() === aiColor && !isPaused) {
               makeAIMove(bestMove);
             }
           }
@@ -107,11 +109,11 @@ export default function Dashboard() {
         setEvaluation(evalData);
       };
     }
-  }, [game, gameMode, aiDifficulty, assignedColor]);
+  }, [game, gameMode, aiDifficulty, assignedColor, isPaused]);
 
   // Update Stockfish position evaluation on moves
   useEffect(() => {
-    if (!gameStarted || isGameOver) return;
+    if (!gameStarted || isGameOver || isPaused) return;
 
     // Determine whose turn it is
     const turn = game.turn();
@@ -124,7 +126,7 @@ export default function Dashboard() {
       // In PVP mode or when user is playing, request evaluation score for UI
       stockfishRef.current.evaluatePosition(game.fen(), 8);
     }
-  }, [fen, gameMode, isGameOver, gameStarted, assignedColor]);
+  }, [fen, gameMode, isGameOver, gameStarted, assignedColor, isPaused]);
 
   // Sync game over conditions
   useEffect(() => {
@@ -135,17 +137,26 @@ export default function Dashboard() {
       if (game.isCheckmate()) {
         setGameOverReason('checkmate');
         setWinner(game.turn() === 'w' ? 'b' : 'w'); // active turn lost
-      } else if (game.isDraw()) {
-        setWinner('draw');
-        if (game.isStalemate()) {
-          setGameOverReason('stalemate');
-        } else if (game.isThreefoldRepetition()) {
-          setGameOverReason('threefold');
-        } else if (game.isInsufficientMaterial()) {
-          setGameOverReason('insufficient');
-        } else {
-          setGameOverReason('draw');
+        
+        // Wait 30 seconds before showing the Game Over overlay for checkmates
+        const timer = setTimeout(() => {
+          setShowGameOverModal(true);
+        }, 30000);
+        return () => clearTimeout(timer);
+      } else {
+        if (game.isDraw()) {
+          setWinner('draw');
+          if (game.isStalemate()) {
+            setGameOverReason('stalemate');
+          } else if (game.isThreefoldRepetition()) {
+            setGameOverReason('threefold');
+          } else if (game.isInsufficientMaterial()) {
+            setGameOverReason('insufficient');
+          } else {
+            setGameOverReason('draw');
+          }
         }
+        setShowGameOverModal(true);
       }
     }
   }, [fen]);
@@ -217,6 +228,8 @@ export default function Dashboard() {
     setActiveMoveIndex(0);
     setEvaluation(null);
     setIsGameOver(false);
+    setShowGameOverModal(false);
+    setIsPaused(false);
     setGameOverReason('');
     setWinner('');
     setResetTrigger(prev => prev + 1);
@@ -276,6 +289,8 @@ export default function Dashboard() {
     setActiveMoveIndex(0);
     setEvaluation(null);
     setIsGameOver(false);
+    setShowGameOverModal(false);
+    setIsPaused(false);
     setGameOverReason('');
     setWinner('');
     setResetTrigger(prev => prev + 1);
@@ -306,6 +321,8 @@ export default function Dashboard() {
     setActiveMoveIndex(newFens.length - 1);
     
     setIsGameOver(false);
+    setShowGameOverModal(false);
+    setIsPaused(false);
     setGameOverReason('');
     setWinner('');
   };
@@ -316,6 +333,7 @@ export default function Dashboard() {
     setGameOverReason('timeout');
     setWinner(color === 'w' ? 'b' : 'w');
     if (soundEnabled) audioService.playGameOver();
+    setShowGameOverModal(true);
   };
 
   // Browser move navigation
@@ -545,6 +563,30 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Pause Indicator Banner */}
+          {isPaused && (
+            <div className="info-alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.25)', color: '#a5b4fc' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
+                <Pause size={16} /> Game Paused. Clocks and piece movement are locked.
+              </span>
+              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderColor: '#a5b4fc', color: '#a5b4fc' }} onClick={() => setIsPaused(false)}>
+                Resume
+              </button>
+            </div>
+          )}
+
+          {/* Checkmate Review Banner */}
+          {isGameOver && gameOverReason === 'checkmate' && !showGameOverModal && (
+            <div className="info-alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)', color: '#34d399' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
+                <Award size={16} /> Checkmate! {winner === 'w' ? 'White' : 'Black'} Wins. Reviewing final board position...
+              </span>
+              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderColor: '#34d399', color: '#34d399' }} onClick={() => setShowGameOverModal(true)}>
+                Show Results
+              </button>
+            </div>
+          )}
+
           <div className="board-section">
             {/* Live Evaluation Bar */}
             <EvaluationBar evaluation={evaluation} isFlipped={isFlipped} />
@@ -622,7 +664,7 @@ export default function Dashboard() {
             ) : (
               <ChessClock
                 activeColor={game.turn()}
-                isGameOver={isGameOver}
+                isGameOver={isGameOver || isPaused}
                 onTimeout={handleTimeout}
                 timePreset={timePreset}
                 gameHistoryLength={history.length}
@@ -675,26 +717,40 @@ export default function Dashboard() {
 
           {/* Primary Board Actions */}
           <div className="controls-footer">
-            <button className="btn btn-secondary" onClick={handleUndo} disabled={history.length === 0 || isGameOver}>
+            <button 
+              className={`btn ${isPaused ? 'btn-primary' : 'btn-secondary'}`} 
+              onClick={() => setIsPaused(!isPaused)}
+              disabled={isGameOver || history.length === 0}
+            >
+              {isPaused ? (
+                <>
+                  <Play size={14} fill="#fff" /> Resume Game
+                </>
+              ) : (
+                <>
+                  <Pause size={14} fill="currentColor" /> Pause Game
+                </>
+              )}
+            </button>
+            <button className="btn btn-secondary" onClick={handleUndo} disabled={history.length === 0 || isGameOver || isPaused}>
               Undo Move
             </button>
             <button className="btn btn-secondary" onClick={() => setIsFlipped(!isFlipped)}>
               <ArrowLeftRight size={14} /> Flip Board
             </button>
             <button className="btn btn-secondary" onClick={resetGame}>
-              <RotateCcw size={14} /> Reset
+              <RotateCcw size={14} /> Restart Match
             </button>
             <button className="btn btn-danger" onClick={() => setGameStarted(false)}>
               <LogOut size={14} /> Setup Menu
             </button>
           </div>
 
-
         </div>
       </div>
 
       {/* Game Over Popup Modal */}
-      {isGameOver && (
+      {showGameOverModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <Award size={48} className="header-logo-icon" style={{ margin: '0 auto 1rem', display: 'block' }} />
