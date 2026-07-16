@@ -389,6 +389,38 @@ export default function Dashboard() {
   const isUserTurn = gameMode === 'pvp' || game.turn() === assignedColor;
   const canDrag = !isGameOver && isUserTurn && !isReviewMode;
 
+  const getCustomSquareStyles = () => {
+    const styles = {};
+    const lastMove = activeMoveIndex > 0 && history[activeMoveIndex - 1] ? history[activeMoveIndex - 1] : null;
+
+    if (!lastMove) return styles;
+
+    // Helper to check if square is light
+    const isLightSquare = (square) => {
+      const file = square.charCodeAt(0) - 97; // a=0, b=1, ...
+      const rank = parseInt(square[1], 10) - 1; // 1=0, 2=1, ...
+      return (file + rank) % 2 !== 0;
+    };
+
+    const fromSquare = lastMove.from;
+    const toSquare = lastMove.to;
+
+    const fromSqColor = isLightSquare(fromSquare) ? currentThemeColors.light : currentThemeColors.dark;
+    const toSqColor = isLightSquare(toSquare) ? currentThemeColors.light : currentThemeColors.dark;
+
+    // 1. Draw circle ring around the last move destination (piece square)
+    styles[toSquare] = {
+      background: `radial-gradient(circle, transparent 66%, var(--color-primary) 66%, var(--color-primary) 74%, transparent 74%), ${toSqColor}`
+    };
+
+    // 2. Draw soft background highlight on the last move source
+    styles[fromSquare] = {
+      background: `linear-gradient(rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.2)), ${fromSqColor}`
+    };
+
+    return styles;
+  };
+
   // Helper labels
   const getGameOverTitle = () => {
     if (gameOverReason === 'timeout') return 'Game Over by Timeout';
@@ -674,7 +706,8 @@ export default function Dashboard() {
                     lightSquareStyle: { backgroundColor: currentThemeColors.light },
                     allowDragging: canDrag,
                     animationDurationInMs: 200,
-                    onPieceDrop: onPieceDrop
+                    onPieceDrop: onPieceDrop,
+                    squareStyles: getCustomSquareStyles()
                   }}
                 />
               </div>
