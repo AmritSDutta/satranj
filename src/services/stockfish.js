@@ -87,6 +87,76 @@ export class StockfishService {
     this.worker.postMessage(`go depth ${depth}`);
   }
 
+  evaluatePositionPromise(fen, depth = 8, timeoutMs = 1500) {
+    return new Promise((resolve) => {
+      if (!this.worker) this.init();
+      if (!this.worker) {
+        resolve({ evalData: { type: 'cp', value: 0 }, bestMove: '' });
+        return;
+      }
+      
+      const fenParts = fen.split(' ');
+      const activeColor = fenParts[1] || 'w';
+      this.setTurn(activeColor);
+
+      let lastEval = null;
+      let isResolved = false;
+      const prevOnMessage = this.worker.onmessage;
+
+      const timer = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          this.worker.onmessage = prevOnMessage;
+          resolve({
+            evalData: lastEval || { type: 'cp', value: 0 },
+            bestMove: '',
+            isTimeout: true
+          });
+        }
+      }, timeoutMs);
+      
+      this.worker.onmessage = (e) => {
+        const line = e.data;
+
+        // Parse evaluation from info line
+        if (line.startsWith('info ') && line.includes('score ')) {
+          const parts = line.split(' ');
+          const scoreIdx = parts.indexOf('score');
+          if (scoreIdx !== -1 && scoreIdx + 2 < parts.length) {
+            const type = parts[scoreIdx + 1]; // 'cp' or 'mate'
+            const valStr = parts[scoreIdx + 2];
+            let value = parseInt(valStr, 10);
+            if (!isNaN(value)) {
+              if (this.currentTurn === 'b') {
+                value = -value;
+              }
+              lastEval = { type, value };
+            }
+          }
+        }
+
+        // Search is finished when bestmove is outputted
+        if (line.startsWith('bestmove')) {
+          const parts = line.split(' ');
+          const bestMove = parts[1];
+          
+          if (!isResolved) {
+            isResolved = true;
+            clearTimeout(timer);
+            this.worker.onmessage = prevOnMessage; // Restore standard listener
+            resolve({
+              evalData: lastEval || { type: 'cp', value: 0 },
+              bestMove: bestMove !== '(none)' ? bestMove : ''
+            });
+          }
+        }
+      };
+
+      this.worker.postMessage(`position fen ${fen}`);
+      this.worker.postMessage(`go depth ${depth}`);
+    });
+  }
+
   stop() {
     if (this.worker) {
       this.worker.postMessage('stop');

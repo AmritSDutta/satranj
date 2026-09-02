@@ -11,6 +11,7 @@ import ChessClock from './ChessClock';
 import MoveHistory from './MoveHistory';
 import CapturedPieces from './CapturedPieces';
 import AboutModal from './AboutModal';
+import GameAnalysisModal from './GameAnalysisModal';
 
 // Board Theme Colors mapping
 const boardThemes = {
@@ -67,6 +68,12 @@ export default function Dashboard() {
   const [winner, setWinner] = useState(''); // 'w', 'b', or 'draw'
   const [showGameOverModal, setShowGameOverModal] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+
+  // Analysis states
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
   // Modals
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -268,6 +275,12 @@ export default function Dashboard() {
     setWinner('');
     setResetTrigger(prev => prev + 1);
     
+    // Reset analysis states
+    setAnalysisData(null);
+    setIsAnalyzing(false);
+    setAnalysisProgress(0);
+    setShowAnalysisModal(false);
+    
     setGameStarted(true);
   };
 
@@ -331,6 +344,12 @@ export default function Dashboard() {
     if (stockfishRef.current) {
       stockfishRef.current.stop();
     }
+
+    // Reset analysis states
+    setAnalysisData(null);
+    setIsAnalyzing(false);
+    setAnalysisProgress(0);
+    setShowAnalysisModal(false);
   };
 
   const handleUndo = () => {
@@ -359,6 +378,12 @@ export default function Dashboard() {
     setIsPaused(false);
     setGameOverReason('');
     setWinner('');
+
+    // Reset analysis states on undo
+    setAnalysisData(null);
+    setIsAnalyzing(false);
+    setAnalysisProgress(0);
+    setShowAnalysisModal(false);
   };
 
   // Clock timeout handler
@@ -379,6 +404,155 @@ export default function Dashboard() {
 
   const returnToLatest = () => {
     setActiveMoveIndex(historyFens.length - 1);
+  };
+
+  const getAbsoluteScore = (evalData) => {
+    if (!evalData) return 0;
+    if (evalData.type === 'mate') {
+      return evalData.value > 0 
+        ? (10000 - evalData.value * 100) 
+        : (-10000 - evalData.value * 100);
+    }
+    return evalData.value;
+  };
+
+  const getWinProbability = (score) => {
+    return 1 / (1 + Math.pow(10, -score / 400));
+  };
+
+  const calculateAccuracy = (scoreBefore, scoreAfter, isWhite) => {
+    const wpBefore = getWinProbability(scoreBefore);
+    const wpAfter = getWinProbability(scoreAfter);
+    const pBefore = isWhite ? wpBefore : (1 - wpBefore);
+    const pAfter = isWhite ? wpAfter : (1 - wpAfter);
+    const pLoss = Math.max(0, pBefore - pAfter);
+    return 100 * (1 - pLoss);
+  };
+
+  const classifyMove = (loss, scoreBefore, scoreAfter, isWhite, isBestMove) => {
+    if (isBestMove) return 'best';
+    if (loss <= 10) return 'excellent';
+    
+    // Mitigate blunder classification in dead-won positions
+    const wasWinning = isWhite ? scoreBefore > 400 : scoreBefore < -400;
+    const isStillWinning = isWhite ? scoreAfter > 300 : scoreAfter < -300;
+    if (wasWinning && isStillWinning) {
+      if (loss < 150) return 'excellent';
+      return 'good';
+    }
+
+    if (loss <= 30) return 'excellent';
+    if (loss <= 60) return 'good';
+    if (loss <= 120) return 'inaccuracy';
+    if (loss <= 250) return 'mistake';
+    return 'blunder';
+  };
+
+  const handleAnalyzeGame = async () => {
+    if (historyFens.length <= 1) return;
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    setShowAnalysisModal(true);
+
+    const evaluations = [];
+    const movesAnalysis = [];
+    const totalPositions = historyFens.length;
+    
+    // Stop any active engine calculations
+    if (stockfishRef.current) {
+      stockfishRef.current.stop();
+    }
+
+    // Evaluate starting position + all moves
+    for (let i = 0; i < totalPositions; i++) {
+      const fen = historyFens[i];
+      const tempGame = new Chess(fen);
+      if (tempGame.isGameOver()) {
+        let evalData = { type: 'cp', value: 0 };
+        if (tempGame.isCheckmate()) {
+          // If checkmate, the side whose turn it is lost.
+          // White turn checkmated: Black won (-1 mate). Black turn checkmated: White won (+1 mate).
+          evalData = {
+            type: 'mate',
+            value: tempGame.turn() === 'w' ? -1 : 1
+          };
+        }
+        evaluations.push({
+          evalData,
+          bestMove: ''
+        });
+      } else {
+        try {
+          const result = await stockfishRef.current.evaluatePositionPromise(fen, 8);
+          evaluations.push(result);
+        } catch (err) {
+          console.error('Error during position evaluation:', err);
+          evaluations.push({ evalData: { type: 'cp', value: 0 }, bestMove: '' });
+        }
+      }
+      setAnalysisProgress(Math.round(((i + 1) / totalPositions) * 100));
+    }
+
+    const summary = {
+      w: { accuracy: 0, best: 0, excellent: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, count: 0, totalAccuracy: 0 },
+      b: { accuracy: 0, best: 0, excellent: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, count: 0, totalAccuracy: 0 }
+    };
+
+    for (let i = 0; i < history.length; i++) {
+      const move = history[i];
+      const playerColor = move.color;
+      const isWhite = playerColor === 'w';
+
+      const evalBefore = evaluations[i];
+      const evalAfter = evaluations[i + 1];
+
+      const scoreBefore = getAbsoluteScore(evalBefore.evalData);
+      const scoreAfter = getAbsoluteScore(evalAfter.evalData);
+
+      const playedMoveUci = move.from + move.to + (move.promotion || '');
+      const bestMoveUci = evalBefore.bestMove;
+      const isBestMove = playedMoveUci === bestMoveUci;
+
+      let loss = isWhite ? (scoreBefore - scoreAfter) : (scoreAfter - scoreBefore);
+      loss = Math.max(0, loss);
+
+      const classification = classifyMove(loss, scoreBefore, scoreAfter, isWhite, isBestMove);
+      const accuracy = calculateAccuracy(scoreBefore, scoreAfter, isWhite);
+
+      summary[playerColor][classification]++;
+      summary[playerColor].count++;
+      summary[playerColor].totalAccuracy += accuracy;
+
+      movesAnalysis.push({
+        ply: i + 1,
+        playedMove: playedMoveUci,
+        san: move.san,
+        player: playerColor,
+        classification,
+        accuracy,
+        scoreBefore,
+        scoreAfter,
+        bestMove: bestMoveUci
+      });
+    }
+
+    if (summary.w.count > 0) {
+      summary.w.accuracy = Math.round(summary.w.totalAccuracy / summary.w.count);
+    } else {
+      summary.w.accuracy = 100;
+    }
+    if (summary.b.count > 0) {
+      summary.b.accuracy = Math.round(summary.b.totalAccuracy / summary.b.count);
+    } else {
+      summary.b.accuracy = 100;
+    }
+
+    setAnalysisData({
+      evaluations,
+      moves: movesAnalysis,
+      summary
+    });
+    setIsAnalyzing(false);
   };
 
   const isReviewMode = activeMoveIndex !== historyFens.length - 1;
@@ -799,10 +973,20 @@ export default function Dashboard() {
             history={history} 
             activeMoveIndex={activeMoveIndex - 1} 
             onSelectMoveIndex={selectMoveIndex}
+            analysisMoves={analysisData?.moves}
           />
 
           {/* Primary Board Actions */}
           <div className="controls-footer">
+            {isGameOver && (
+              <button 
+                className="btn btn-secondary" 
+                onClick={analysisData ? () => setShowAnalysisModal(true) : handleAnalyzeGame}
+                style={{ gridColumn: 'span 2', borderColor: 'var(--color-secondary)', color: 'var(--color-secondary)' }}
+              >
+                {analysisData ? 'View Analysis Report' : 'Analyze Game'}
+              </button>
+            )}
             <button 
               className={`btn ${isPaused ? 'btn-primary' : 'btn-secondary'}`} 
               onClick={() => setIsPaused(!isPaused)}
@@ -847,15 +1031,41 @@ export default function Dashboard() {
             />
             <h2 className="modal-title">{getGameOverTitle()}</h2>
             <p className="modal-subtitle">{getGameOverSub()}</p>
-            <button className="btn btn-primary" onClick={resetGame}>
-              Play Again
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setShowGameOverModal(false);
+                  handleAnalyzeGame();
+                }}
+              >
+                Analyze Game
+              </button>
+              <button className="btn btn-primary" onClick={resetGame}>
+                Play Again
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* About & Licenses Modal */}
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+
+      {/* Game Analysis Modal */}
+      <GameAnalysisModal
+        isOpen={showAnalysisModal}
+        onClose={() => setShowAnalysisModal(false)}
+        isAnalyzing={isAnalyzing}
+        progress={analysisProgress}
+        analysisData={analysisData}
+        activeMoveIndex={activeMoveIndex}
+        onSelectMoveIndex={selectMoveIndex}
+        playerNames={{
+          w: assignedColor === 'w' ? getPlayerName('bottom') : getPlayerName('top'),
+          b: assignedColor === 'b' ? getPlayerName('bottom') : getPlayerName('top')
+        }}
+      />
     </div>
   );
 }
