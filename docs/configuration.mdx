@@ -1,0 +1,128 @@
+---
+title: Configuration
+description: Environment variables, Vite config, and observability setup.
+---
+
+# Configuration
+
+## Environment Variables
+
+Create a `.env` file in the project root (use `.env.example` as a template):
+
+### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VITE_FARO_COLLECTOR_URL` | Grafana Faro collector endpoint URL | `https://faro-collector-prod-ap-south-1.grafana.net/collect/your-key` |
+| `FARO_API_KEY` | API key for uploading source maps | `a5f19c2684ab297f27fc603bf82a0e92` |
+
+> **Note:** `FARO_API_KEY` is only needed if using the `@grafana/faro-rollup-plugin` for source map uploads. The app will run without it.
+
+## Vite Configuration
+
+**File:** `vite.config.js`
+
+```javascript
+export default defineConfig({
+  plugins: [
+    react(),
+    faroUploader({
+      appName: 'satranj.amritai.org',
+      endpoint: 'https://faro-api-prod-ap-south-1.grafana.net/faro/api/v1',
+      appId: '1960',
+      stackId: '1619876',
+      verbose: true,
+      apiKey: process.env.FARO_API_KEY,
+      gzipContents: true,
+    })
+  ],
+  server: {
+    host: true,  // Bind to 0.0.0.0 for network access
+  }
+})
+```
+
+### Key Settings
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `server.host` | `true` | Exposes dev server to LAN |
+| `faroUploader.appName` | `satranj.amritai.org` | Matches Faro app metadata |
+| `faroUploader.gzipContents` | `true` | Compresses source maps before upload |
+
+## Grafana Faro Integration
+
+Satranj integrates **Grafana Faro** for Real User Monitoring (RUM), error tracking, and performance telemetry.
+
+### Initialization (`src/main.jsx`)
+
+```javascript
+initializeFaro({
+  url: import.meta.env.VITE_FARO_COLLECTOR_URL || 'fallback-url',
+  app: {
+    name: 'satranj.amritai.org',
+    version: '1.0.0',
+    environment: 'production',
+  },
+  instrumentations: [
+    ...getWebInstrumentations(),
+    new TracingInstrumentation({
+      instrumentationOptions: {
+        propagateTraceHeaderCorsUrls: [/satranj\.amritai\.org/],
+      },
+    }),
+    new ReactIntegration(),
+  ],
+});
+```
+
+### Instrumentations
+
+| Instrumentation | Purpose |
+|-----------------|---------|
+| `getWebInstrumentations()` | Console logs, JS errors, web vitals, session tracking |
+| `TracingInstrumentation` | OpenTelemetry HTTP request tracing (restricted to `satranj.amritai.org`) |
+| `ReactIntegration` | Component stack traces in error reports |
+
+### Error Boundary (`src/App.jsx`)
+
+The `<FaroErrorBoundary>` wraps the entire dashboard:
+
+```jsx
+<FaroErrorBoundary fallback={<CrashUI />}>
+  <Dashboard />
+</FaroErrorBoundary>
+```
+
+Crashes are automatically reported to Faro with React component stack traces.
+
+## Linting
+
+**File:** `.oxlintrc.json`
+
+```json
+{
+  "plugins": ["react", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+```
+
+Rules enforced:
+
+| Rule | Level | Description |
+|------|-------|-------------|
+| `react/rules-of-hooks` | error | Prevents invalid hook usage |
+| `react/only-export-components` | warn | Ensures only components are exported (with constant export exception) |
+
+## Git Ignore
+
+The following are excluded from version control:
+
+- `node_modules/`, `dist/`, `dist-ssr/`
+- `.env*` files (environment secrets)
+- `*.local` files
+- Editor directories (`.vscode/`, `.idea/`, `.DS_Store`)
+- Log files (`*.log`, `npm-debug.log*`)

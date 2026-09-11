@@ -1,0 +1,56 @@
+---
+title: Introduction
+description: Welcome to Satranj — a premium, client-side chess web application built with React and Vite.
+---
+
+# Satranj
+
+**Satranj** is a premium, client-side serverless chess web application built in React and Vite. It is styled with modern dark dashboard aesthetics, glassmorphism panels, and glowing neon accents.
+
+It features localized player-vs-player matches, customizable chess clocks, synthesized Web Audio API sound effects, and an offline **Stockfish AI** engine running directly inside the browser using WebAssembly.
+
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/AmritSDutta/satranj.git
+cd satranj
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser to start playing.
+
+## Key Features
+
+- **Dual Game Modes**: Play local hotseat PvP or against the Stockfish AI
+- **Difficulty Slider**: Adjust Stockfish search depth from level 2 to 15
+- **Live Evaluation Bar**: Real-time centipawn or mate advantage display
+- **Move Log History**: Full algebraic notation with position navigation/review
+- **Chess Clock**: Turn-synced timers supporting Bullet (1+0), Blitz (3+2, 5+0), Rapid (10+0), and Classical (30+0)
+- **Captured Material Tracking**: Visual piece display with point difference
+- **Synthesized Audio Effects**: Zero-latency Web Audio API sounds for moves, captures, checks, and game-over
+- **Board Themes**: Emerald Green, Classic Wood, Carbon Fiber, and Midnight Neon
+- **Flip Board**: Instantly swap board perspective between White and Black
+- **Game Analysis**: Post-game Stockfish analysis with move classification badges
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 19 + Vite 8 |
+| Chess Logic | chess.js |
+| Board UI | react-chessboard |
+| AI Engine | Stockfish 10 (WebAssembly via Web Worker) |
+| Audio | Web Audio API (synthesized) |
+| Icons | Lucide React |
+| Observability | Grafana Faro |
+| Styling | CSS with design tokens & variables |
+
+## Legal & Licensing
+
+Satranj is released under the **GNU General Public License v3 (GPL-3.0)**. The application integrates the Stockfish Chess Engine, which is also licensed under GPL-3.0. A full license copy is available in the project root and accessible via the in-app "About & Licenses" modal.

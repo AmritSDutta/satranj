@@ -26,6 +26,22 @@
    ```
 3. Open `http://localhost:5173` in your browser.
 
+## Rendering the Docs Locally (docs7)
+
+To preview the documentation site locally using the docs7 renderer:
+
+1. Install docs7 globally (if not already installed):
+   ```bash
+   npm install -g @upstash/docs7
+   ```
+2. Run the docs7 development server, pointing at your docs directory:
+   ```bash
+   docs7 dev ./docs --port 4000
+   ```
+3. Open `http://localhost:4000` in your browser to view the rendered documentation.
+
+> **Note**: The `--port` flag specifies the port for the dev server. Use `docs7 dev --help` for additional options.
+
 ## Legal and GPL Compliance (Stockfish Licensing)
 
 Satranj is released under the **GNU General Public License v3 (GPL-3.0)**. A copy of the license is included in the project's root folder under the file `LICENSE`.

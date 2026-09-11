@@ -1,0 +1,29 @@
+{
+  "name": "Satranj",
+  "theme": "maple",
+  "colors": {
+    "primary": "#00E599",
+    "light": "#00E599",
+    "dark": "#00E599"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": ["index", "installation", "features"]
+      },
+      {
+        "group": "Architecture",
+        "pages": ["architecture", "components", "services"]
+      },
+      {
+        "group": "Configuration",
+        "pages": ["configuration", "deployment"]
+      },
+      {
+        "group": "Legal",
+        "pages": ["license"]
+      }
+    ]
+  }
+}

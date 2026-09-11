@@ -1,0 +1,112 @@
+---
+title: Features
+description: Overview of Satranj's gameplay features and customization options.
+---
+
+# Features
+
+## Game Modes
+
+### Local PvP (Hotseat)
+
+Two players share the same device, taking turns making moves. Both clocks run simultaneously with turn-based activation.
+
+### AI Opponent (Stockfish)
+
+Play against the Stockfish chess engine running entirely in your browser via WebAssembly. No server required.
+
+## AI Difficulty
+
+Adjustable search depth from **2 to 15**, mapped to the `go depth` UCI command. Higher values produce stronger play but require more computation time.
+
+| Depth Setting | Approximate Strength |
+|--------------|---------------------|
+| 2–4 | Beginner |
+| 5–8 | Intermediate |
+| 9–12 | Advanced |
+| 13–15 | Expert |
+
+## Evaluation Bar
+
+A vertical bar displayed beside the chessboard showing the current position evaluation in real-time:
+
+- **Centipawn scores** are mapped to a 5–95% range (0 = 50%)
+- **Mate scores** are capped at ±10 pawns and displayed as `M#` (mate in N moves)
+- Automatically inverts orientation when the board is flipped
+- Positive values favor White; negative values favor Black
+
+## Move History
+
+The move log tracks all moves in standard algebraic notation:
+
+- Moves are displayed in pairs (White / Black) with row numbers
+- Click any move to **navigate to that board position** (review mode)
+- The currently active move is highlighted
+- Auto-scrolls to the latest move
+- Supports **analysis badges** (★ Best, ✓ Good, ?! Inaccuracy, ? Mistake, ?? Blunder) when game analysis is active
+
+## Chess Clock
+
+Turn-synced countdown timers with the following presets:
+
+| Preset | Time | Increment | Common Name |
+|--------|------|-----------|-------------|
+| 1+0 | 1 min | 0 sec | Bullet |
+| 3+2 | 3 min | 2 sec | Blitz |
+| 5+0 | 5 min | 0 sec | Blitz |
+| 10+0 | 10 min | 0 sec | Rapid |
+| 30+0 | 30 min | 0 sec | Classical |
+
+### Clock Behavior
+
+- **100ms interval accuracy** for precise timing
+- **Increment handling**: Applied after each move to the player who just moved
+- **Low-time warning**: Visual indicator activates when a player has less than 20 seconds
+- **Tenth-of-second display**: Shows `.T` precision when under 10 seconds remaining
+- **Timeout detection**: Automatically ends the game when a clock reaches zero
+
+## Captured Pieces
+
+A material tracker displays:
+
+- Pieces captured by each player (shown from that player's perspective)
+- Standard Unicode chess symbols (♛ ♜ ♝ ♞ ♟)
+- Point difference calculation based on standard piece values: Queen=9, Rook=5, Bishop=3, Knight=3, Pawn=1
+
+## Audio Effects
+
+All sounds are synthesized using the Web Audio API — no external audio files required:
+
+| Sound | Waveform | Characteristics |
+|-------|----------|-----------------|
+| Move | Triangle | Quick descending pitch (320→180 Hz, 80ms) |
+| Capture | Sine | Dual-frequency drop (440→300→150 Hz, 120ms) |
+| Check | Dual Sine | D5 + G5 harmony (250ms) |
+| Game Over | Sawtooth + Lowpass | Descending sweep (220→110 Hz, 500ms) |
+
+The audio context is lazily initialized on first user interaction (to comply with browser autoplay policies) and can be toggled on/off.
+
+## Board Themes
+
+Four beautiful color schemes:
+
+| Theme | Light Squares | Dark Squares | Style |
+|-------|--------------|--------------|-------|
+| Emerald Green | #eeeed2 | #769656 | Classic tournament |
+| Classic Wood | #f0d9b5 | #b58863 | Traditional wooden |
+| Carbon Fiber | #71717a | #27272a | Modern dark |
+| Midnight Neon | #38bdf8 | #0f172a | Cyberpunk glow |
+
+## Flip Board
+
+Instantly swap the board perspective between White and Black. The evaluation bar and captured pieces panels automatically adjust their orientation.
+
+## Game Analysis
+
+After a game ends, the **Analyze Game** feature uses Stockfish to:
+
+- Evaluate every position in the game history
+- Classify each move as: Best, Excellent, Good, Inaccuracy, Mistake, or Blunder
+- Display an interactive evaluation graph across the game timeline
+- Show key moments (inaccuracies, mistakes, blunders) with before/after scores
+- Allow jumping directly to any analyzed position for review

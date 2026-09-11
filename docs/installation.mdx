@@ -1,0 +1,70 @@
+---
+title: Installation
+description: How to install and run Satranj locally.
+---
+
+# Installation
+
+## Prerequisites
+
+- **Node.js** (v18 or later recommended)
+- **npm** (v9 or later) or **yarn**
+
+## Clone the Repository
+
+```bash
+git clone https://github.com/AmritSDutta/satranj.git
+cd satranj
+```
+
+## Install Dependencies
+
+```bash
+npm install
+```
+
+This installs the following key packages:
+
+| Package | Purpose |
+|---------|---------|
+| `react` / `react-dom` | UI framework (v19) |
+| `chess.js` | Chess rules, move validation, FEN generation |
+| `react-chessboard` | Interactive chessboard component |
+| `lucide-react` | Icon library |
+| `@grafana/faro-*` | Frontend observability (Real User Monitoring) |
+
+Dev dependencies include Vite, the React plugin, oxlint, and the Faro Rollup plugin for source map uploads.
+
+## Run Development Server
+
+```bash
+npm run dev
+```
+
+The application will be available at **http://localhost:5173**.
+
+> **Note:** The Vite dev server binds to `0.0.0.0` (configured via `server.host: true` in `vite.config.js`), making it accessible to other devices on your local network.
+
+## Build for Production
+
+```bash
+npm run run build
+```
+
+Output is generated in the `dist/` directory. This produces a fully static client-side application that can be hosted on any static hosting provider.
+
+## Preview Production Build
+
+```bash
+npm run preview
+```
+
+Serves the `dist/` folder locally to verify the production build.
+
+## Lint
+
+```bash
+npm run lint
+```
+
+Uses **oxlint** with React-specific rules (`react/rules-of-hooks`, `react/only-export-components`).

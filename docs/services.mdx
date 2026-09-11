@@ -1,0 +1,206 @@
+---
+title: Services
+description: Documentation for the Stockfish AI and Audio services.
+---
+
+# Services
+
+## Stockfish Service
+
+**File:** `src/services/stockfish.js`
+
+A wrapper class for the Stockfish chess engine running in a Web Worker.
+
+### Class: `StockfishService`
+
+```javascript
+import { StockfishService } from '../services/stockfish';
+const stockfish = new StockfishService(onMessage, onEval);
+stockfish.init();
+```
+
+### Constructor
+
+```javascript
+constructor(onMessage, onEval)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `onMessage` | function | Callback for raw UCI output lines |
+| `onEval` | function | Callback for parsed evaluation objects |
+
+### Methods
+
+#### `init()`
+
+Initializes the Web Worker:
+
+1. Terminates any existing worker
+2. Creates a Blob URL to load Stockfish 10 from CDN (CORS workaround)
+3. Sets up the `onmessage` handler to parse UCI output
+4. Sends `uci` command to initialize the engine
+5. Sets Hash table size to 32 MB
+
+#### `terminate()`
+
+Immediately terminates the Web Worker and sets the internal reference to `null`.
+
+#### `stop()`
+
+Sends the `stop` command to halt the current search (does not terminate the worker).
+
+#### `setTurn(turn)`
+
+Updates the internal turn tracker for score conversion.
+
+```javascript
+stockfish.setTurn('w'); // or 'b'
+```
+
+#### `calculateBestMove(fen, depth)`
+
+Calculates the best move for the given position.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `fen` | string | — | Position in FEN notation |
+| `depth` | number | 10 | Search depth |
+
+Sends:
+- `position fen <fen>`
+- `go depth <depth>`
+
+#### `evaluatePosition(fen, depth)`
+
+Evaluates a position (same as `calculateBestMove` but semantically for evaluation-only contexts).
+
+#### `evaluatePositionPromise(fen, depth, timeoutMs)`
+
+**Promise-based** evaluation that resolves when the engine finishes or times out.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `fen` | string | — | Position in FEN notation |
+| `depth` | number | 8 | Search depth |
+| `timeoutMs` | number | 1500 | Maximum wait time in ms |
+
+Returns:
+```javascript
+{
+  evalData: { type: 'cp' | 'mate', value: number },
+  bestMove: string,      // UCI move notation or empty string
+  isTimeout: boolean     // true if evaluation timed out
+}
+```
+
+### Evaluation Parsing
+
+The service parses `info` lines from Stockfish UCI output:
+
+```
+info depth 10 seldepth 15 score cp 45 nodes 123456 nps 789000 tbhits 0 time 156 pv e2e4 e7e5
+```
+
+Extracts:
+- `score cp X` → `{ type: 'cp', value: X }` (centipawns)
+- `score mate Y` → `{ type: 'mate', value: Y }` (mate in Y moves)
+
+### Turn-Relative Score Conversion
+
+Stockfish reports evaluations relative to the **active side**. The service converts to absolute scores:
+
+```javascript
+// If it's Black's turn, flip the sign
+if (this.currentTurn === 'b') {
+  value = -value;
+}
+```
+
+Result: **Positive values always favor White**, negative values favor Black.
+
+---
+
+## Audio Service
+
+**File:** `src/services/audio.js`
+
+A singleton service for synthesized chess sound effects using the Web Audio API.
+
+### Usage
+
+```javascript
+import { audioService } from '../services/audio';
+
+audioService.playMove();
+audioService.playCapture();
+audioService.playCheck();
+audioService.playGameOver();
+```
+
+### Class: `AudioService`
+
+#### `init()`
+
+Lazily initializes the `AudioContext` (required due to browser autoplay policies):
+
+```javascript
+this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+```
+
+If the context is suspended (common before user interaction), it automatically resumes.
+
+#### `playMove()`
+
+Plays a short, crisp move sound:
+
+| Property | Value |
+|----------|-------|
+| Waveform | Triangle |
+| Frequency sweep | 320 Hz → 180 Hz |
+| Duration | 80 ms |
+| Gain envelope | 0.12 → 0.001 (exponential) |
+
+#### `playCapture()`
+
+Plays a deeper, percussive capture sound:
+
+| Property | Value |
+|----------|-------|
+| Waveform | Sine |
+| Frequency sweep | 440 Hz → 300 Hz → 150 Hz |
+| Duration | 120 ms |
+| Gain envelope | 0.15 → 0.001 (exponential) |
+
+#### `playCheck()`
+
+Plays a two-note harmony for check alerts:
+
+| Property | Value |
+|----------|-------|
+| Waveform | Dual Sine (D5 + G5) |
+| Frequencies | 587.33 Hz + 783.99 Hz |
+| Duration | 250 ms |
+| Gain envelope | 0.1 → 0.001 (exponential) |
+
+#### `playGameOver()`
+
+Plays a descending sweep for game conclusion:
+
+| Property | Value |
+|----------|-------|
+| Waveform | Sawtooth + Lowpass filter |
+| Frequency sweep | 220 Hz → 110 Hz |
+| Filter cutoff | 400 Hz |
+| Duration | 500 ms |
+| Gain envelope | 0.08 → 0.001 (exponential) |
+
+#### `close()`
+
+Closes the AudioContext and releases resources. Called on component unmount.
+
+### Browser Compatibility
+
+- Uses `window.AudioContext || window.webkitAudioContext` for Safari support
+- Context is created lazily on first `play*()` call (after user interaction)
+- Handles suspended contexts via `ctx.resume()`

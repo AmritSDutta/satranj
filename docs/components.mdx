@@ -1,0 +1,213 @@
+---
+title: Components
+description: Documentation for all React components in Satranj.
+---
+
+# Components
+
+## Dashboard
+
+**File:** `src/components/Dashboard.jsx` (~1070 lines)
+
+The main game container and orchestrator. Manages all game state, handles move execution, and renders the complete game UI including setup screen.
+
+### Responsibilities
+
+- **Game state management**: Chess.js instance, FEN, move history, history FENs
+- **Stockfish AI integration**: Move calculation and evaluation
+- **Move validation and execution**: `executeMove()`, `makeAIMove()`
+- **UI mode switching**: Setup screen vs. active game interface
+- **Game controls**: Pause/resume, undo, flip board, restart, return to setup
+- **Game over detection**: Checkmate, stalemate, timeout, draw conditions
+
+### Props
+
+None — Dashboard is the root component rendered by `<App />`.
+
+### Key Methods
+
+| Method | Description |
+|--------|-------------|
+| `executeMove(from, to, san)` | Validates and applies a move, updates all state |
+| `makeAIMove(uciMove)` | Parses UCI notation and calls `executeMove` |
+| `handleAnalyzeGame()` | Runs Stockfish analysis across all game positions |
+| `selectMoveIndex(idx)` | Navigates to a specific position in move history |
+| `handleUndo()` | Reverts the last move pair |
+| `resetGame()` | Resets to initial position with current settings |
+
+### State Variables
+
+```javascript
+const [game, setGame] = useState(() => new Chess());
+const [fen, setFen] = useState(() => game.fen());
+const [history, setHistory] = useState([]);
+const [historyFens, setHistoryFens] = useState([game.fen()]);
+const [activeMoveIndex, setActiveMoveIndex] = useState(0);
+const [gameStarted, setGameStarted] = useState(false);
+const [evaluation, setEvaluation] = useState(null);
+const [isFlipped, setIsFlipped] = useState(false);
+const [isPaused, setIsPaused] = useState(false);
+const [isGameOver, setIsGameOver] = useState(false);
+```
+
+---
+
+## ChessClock
+
+**File:** `src/components/ChessClock.jsx`
+
+Turn-synced countdown timers for both players.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `activeColor` | string | `'w'` or `'b'` — whose turn it is |
+| `isGameOver` | boolean | Whether the game has ended |
+| `onTimeout` | function | Callback when a clock reaches zero |
+| `timePreset` | string | Preset identifier (e.g., `"10+0"`) |
+| `gameHistoryLength` | number | Move count (for increment detection) |
+| `resetTrigger` | number | Increment to force clock reset |
+
+### Time Presets
+
+| Preset | Initial Time | Increment |
+|--------|-------------|-----------|
+| `1+0` | 60,000 ms | 0 ms |
+| `3+2` | 180,000 ms | 2,000 ms |
+| `5+0` | 300,000 ms | 0 ms |
+| `10+0` | 600,000 ms | 0 ms |
+| `30+0` | 1,800,000 ms | 0 ms |
+
+### Behavior
+
+- **100ms tick interval** for millisecond-accurate countdown
+- **Increment application**: Added to the player who just moved (detected via `gameHistoryLength` change)
+- **Low-time warning**: CSS class `flagged` applied when < 20,000 ms
+- **Tenths display**: Shows `.T` precision when < 10,000 ms
+- **Timeout callback**: Calls `onTimeout(color)` when time expires
+
+---
+
+## EvaluationBar
+
+**File:** `src/components/EvaluationBar.jsx`
+
+Vertical bar displaying the current engine evaluation.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `evaluation` | object \| null | `{ type: 'cp'\|'mate', value: number }` |
+| `isFlipped` | boolean | Board orientation (inverts bar) |
+
+### Score Mapping
+
+- **Centipawns**: Divided by 100 to get pawn units, then mapped from [-10, +10] to [5%, 95%]
+- **Mate**: Capped at ±10, displayed as `M#` (mate in N moves)
+- **Orientation**: When `isFlipped` is true, the bar inverts (Black percentage at bottom)
+
+---
+
+## MoveHistory
+
+**File:** `src/components/MoveHistory.jsx`
+
+Scrollable list of moves in algebraic notation.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `history` | array | Array of move objects from chess.js |
+| `activeMoveIndex` | number | Currently selected ply index |
+| `onSelectMoveIndex` | function | Callback when a move is clicked |
+| `analysisMoves` | array | Optional array of `{ classification }` objects |
+
+### Features
+
+- Moves grouped in pairs with row numbers (1., 2., 3., ...)
+
+---
+
+## CapturedPieces
+
+**File:** `src/components/CapturedPieces.jsx`
+
+Visual tracker of captured material.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `game` | Chess instance | Current game position |
+| `playerColor` | string | `'w'` or `'b'` — perspective to display |
+
+### Logic
+
+1. Scans the board to count current pieces by type and color
+2. Compares against starting counts to determine captured pieces
+3. Displays the opponent's captured pieces from the player's perspective
+4. Shows score difference using standard piece values (Q=9, R=5, B=3, N=3, P=1)
+
+---
+
+## AboutModal
+
+**File:** `src/components/AboutModal.jsx`
+
+Modal dialog for GPL-3.0 license compliance and Stockfish attribution.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `isOpen` | boolean | Controls modal visibility |
+| `onClose` | function | Close handler |
+
+### Content
+
+- Application description and version
+- GPL-3.0 license notice with warranty disclaimer
+- Stockfish attribution with links to source repositories
+- Satranj source code availability notice
+- Full GPL-3.0 license text (abbreviated)
+
+---
+
+## GameAnalysisModal
+
+**File:** `src/components/GameAnalysisModal.jsx`
+
+Post-game analysis display with interactive graph and move review.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `isOpen` | boolean | Controls modal visibility |
+| `onClose` | function | Close handler |
+| `isAnalyzing` | boolean | Loading state flag |
+| `progress` | number | Analysis progress (0-100) |
+| `analysisData` | object | `{ summary, moves, evaluations }` |
+| `activeMoveIndex` | number | Current position index |
+| `onSelectMoveIndex` | function | Navigate to a specific move |
+| `playerNames` | object | `{ w: string, b: string }` |
+
+### Features
+
+- **Loading state**: Animated spinner with progress bar during analysis
+- **Summary tab**: Overview statistics including best moves, blunders, average accuracy per side
+- **Evaluation graph**: SVG line chart showing score progression across the game
+- **Key moments tab**: Filtered list of inaccuracies, mistakes, and blunders with before/after scores
+- **Navigation**: Click any point in the graph or moment to jump to that position
+- Active move highlighted via `active-ply` CSS class
+- Auto-scrolls to bottom on new moves
+- Displays **classification badges** when analysis data is present:
+  - ★ Best (green)
+  - ★ Excellent (emerald)
+  - ✓ Good (teal)
+  - ?! Inaccuracy (amber)
+  - ? Mistake (orange)
+  - ?? Blunder (red)
