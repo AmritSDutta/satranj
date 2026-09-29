@@ -6,6 +6,7 @@
     "light": "#00E599",
     "dark": "#00E599"
   },
+  "filterSidebar": true,
   "navigation": {
     "groups": [
       {

@@ -128,6 +128,16 @@ Scrollable list of moves in algebraic notation.
 ### Features
 
 - Moves grouped in pairs with row numbers (1., 2., 3., ...)
+- Active move highlighted via `active-ply` CSS class
+- Auto-scrolls to bottom on new moves
+- Interactive position review on move click
+- Displays **classification badges** when analysis data is present:
+  - ★ Best (`#059669`)
+  - ★ Excellent (`#10b981`)
+  - ✓ Good (`#0d9488`)
+  - ?! Inaccuracy (`#d97706`)
+  - ? Mistake (`#ea580c`)
+  - ?? Blunder (`#dc2626`)
 
 ---
 
@@ -198,16 +208,7 @@ Post-game analysis display with interactive graph and move review.
 ### Features
 
 - **Loading state**: Animated spinner with progress bar during analysis
-- **Summary tab**: Overview statistics including best moves, blunders, average accuracy per side
-- **Evaluation graph**: SVG line chart showing score progression across the game
-- **Key moments tab**: Filtered list of inaccuracies, mistakes, and blunders with before/after scores
-- **Navigation**: Click any point in the graph or moment to jump to that position
-- Active move highlighted via `active-ply` CSS class
-- Auto-scrolls to bottom on new moves
-- Displays **classification badges** when analysis data is present:
-  - ★ Best (green)
-  - ★ Excellent (emerald)
-  - ✓ Good (teal)
-  - ?! Inaccuracy (amber)
-  - ? Mistake (orange)
-  - ?? Blunder (red)
+- **Summary tab**: Overview statistics including move quality breakdown counts and player accuracy percentages
+- **Evaluation graph**: Interactive SVG line chart showing centipawn/mate score progression across the game with clickable points
+- **Key moments tab**: Filtered list of inaccuracies, mistakes, and blunders with before/after evaluations and direct "Review" jump buttons
+- **Direct navigation**: Click any moment or chart point to jump to that board position

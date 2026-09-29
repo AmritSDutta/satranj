@@ -7,36 +7,54 @@ description: Project structure, game state flow, and key architectural patterns.
 
 ## Project Structure
 
-```
-satranj/
-├── docs/                    # Documentation (MDX pages)
-├── public/                  # Static assets (favicons)
-├── src/
-│   ├── assets/              # Images (logo, hero)
-│   ├── components/          # React UI components
-│   │   ├── Dashboard.jsx    # Main game orchestrator
-│   │   ├── ChessClock.jsx   # Turn-synced timers
-│   │   ├── EvaluationBar.jsx # Real-time evaluation display
-│   │   ├── MoveHistory.jsx  # Algebraic notation log
-│   │   ├── CapturedPieces.jsx # Material tracking
-│   │   ├── AboutModal.jsx   # License & attribution modal
-│   │   └── GameAnalysisModal.jsx # Post-game analysis
-│   ├── services/
-│   │   ├── stockfish.js     # Stockfish Web Worker wrapper
-│   │   └── audio.js         # Web Audio API synthesizer
-│   ├── App.jsx              # Root component with Faro error boundary
-│   ├── App.css              # App-specific styles (merged into index.css)
-│   ├── index.css            # Global styles & design tokens
-│   └── main.jsx             # Entry point with Faro initialization
-├── .env.example             # Environment variable template
-├── .gitignore               # Git ignore rules
-├── .oxlintrc.json           # Linter configuration
-├── index.html               # HTML container
-├── LICENSE                  # GPL-3.0 license
-├── package.json             # Dependencies & scripts
-├── vite.config.js           # Vite build configuration
-└── CLAUDE.md                # Development guidance
-```
+<Tree>
+  <Tree.Folder name="docs" defaultOpen>
+    <Tree.File name="docs.json" highlight />
+    <Tree.File name="custom.css" />
+    <Tree.File name="architecture.mdx" />
+    <Tree.File name="components.mdx" />
+    <Tree.File name="configuration.mdx" />
+    <Tree.File name="deployment.mdx" />
+    <Tree.File name="features.mdx" />
+    <Tree.File name="index.mdx" />
+    <Tree.File name="installation.mdx" />
+    <Tree.File name="license.mdx" />
+    <Tree.File name="services.mdx" />
+  </Tree.Folder>
+  <Tree.Folder name="public">
+    <Tree.File name="favicon.ico" />
+  </Tree.Folder>
+  <Tree.Folder name="src" defaultOpen>
+    <Tree.Folder name="assets">
+      <Tree.File name="hero.png" />
+      <Tree.File name="react.svg" />
+      <Tree.File name="vite.svg" />
+    </Tree.Folder>
+    <Tree.Folder name="components" defaultOpen>
+      <Tree.File name="AboutModal.jsx" />
+      <Tree.File name="CapturedPieces.jsx" />
+      <Tree.File name="ChessClock.jsx" />
+      <Tree.File name="Dashboard.jsx" highlight />
+      <Tree.File name="EvaluationBar.jsx" />
+      <Tree.File name="GameAnalysisModal.jsx" />
+      <Tree.File name="MoveHistory.jsx" />
+    </Tree.Folder>
+    <Tree.Folder name="services" defaultOpen>
+      <Tree.File name="audio.js" />
+      <Tree.File name="stockfish.js" highlight />
+    </Tree.Folder>
+    <Tree.File name="App.css" />
+    <Tree.File name="App.jsx" highlight />
+    <Tree.File name="index.css" />
+    <Tree.File name="main.jsx" highlight />
+  </Tree.Folder>
+  <Tree.File name=".gitignore" />
+  <Tree.File name=".oxlintrc.json" />
+  <Tree.File name="index.html" />
+  <Tree.File name="LICENSE" />
+  <Tree.File name="package.json" />
+  <Tree.File name="vite.config.js" />
+</Tree>
 
 ## Entry Points
 
@@ -54,6 +72,7 @@ Application entry point that:
 
 ### `src/App.jsx`
 
+Root component that wraps `<Dashboard />` inside a `<FaroErrorBoundary>`, providing graceful crash recovery with a custom dark-themed fallback UI and reload button.
 
 ## Key Patterns
 
@@ -116,20 +135,19 @@ CSS custom properties defined in `:root` (dark mode) and `[data-theme='light']` 
 
 The dashboard uses a responsive CSS Grid layout (`dashboard-grid`):
 
+```text
++---------------------------------------------+
+|                   Header                    |
++----------+------------------+---------------+
+|  Clocks  |    Board         |   Eval Bar    |
+|  (top)   |    (center)      |   (right)     |
++----------+                  +---------------+
+|  Clocks  |                  |  Move History |
+|  (bottom)|                  |  + Captured   |
++----------+------------------+---------------+
+|              Action Buttons                 |
++---------------------------------------------+
 ```
-┌─────────────────────────────────────────────┐
-│                   Header                     │
-├──────────┬──────────────────┬───────────────┤
-│  Clocks  │    Board         │   Eval Bar    │
-│  (top)   │    (center)      │   (right)     │
-├──────────┤                  ├───────────────┤
-│  Clocks  │                  │  Move History │
-│  (bottom)│                  │  + Captured   │
-├──────────┴──────────────────┴───────────────┤
-│              Action Buttons                  │
-└─────────────────────────────────────────────┘
-```
-Root component that wraps `<Dashboard />` inside a `<FaroErrorBoundary>`, providing graceful crash recovery with a custom dark-themed fallback UI and reload button.
 
 ## Game State Flow
 
