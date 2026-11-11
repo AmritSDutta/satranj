@@ -836,11 +836,11 @@ export default function Dashboard() {
 
           {/* Checkmate Review Banner */}
           {isGameOver && gameOverReason === 'checkmate' && !showGameOverModal && (
-            <div className="info-alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)', color: '#34d399' }}>
+            <div className="info-alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)', color: 'var(--success)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
                 <Award size={16} /> Checkmate! {winner === 'w' ? 'White' : 'Black'} Wins. Reviewing final board position...
               </span>
-              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderColor: '#34d399', color: '#34d399' }} onClick={() => setShowGameOverModal(true)}>
+              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderColor: 'var(--success)', color: 'var(--success)' }} onClick={() => setShowGameOverModal(true)}>
                 Show Results
               </button>
             </div>

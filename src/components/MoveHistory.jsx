@@ -6,9 +6,9 @@ export default function MoveHistory({ history, activeMoveIndex, onSelectMoveInde
 
   const getBadgeSymbol = (classification) => {
     switch (classification) {
-      case 'best': return { symbol: '★', color: '#059669', title: 'Best Move' };
+      case 'best': return { symbol: '★', color: '#10b981', title: 'Best Move' };
       case 'excellent': return { symbol: '★', color: '#10b981', title: 'Excellent' };
-      case 'good': return { symbol: '✓', color: '#0d9488', title: 'Good' };
+      case 'good': return { symbol: '✓', color: '#14b8a6', title: 'Good' };
       case 'inaccuracy': return { symbol: '?!', color: '#d97706', title: 'Inaccuracy' };
       case 'mistake': return { symbol: '?', color: '#ea580c', title: 'Mistake' };
       case 'blunder': return { symbol: '??', color: '#dc2626', title: 'Blunder' };

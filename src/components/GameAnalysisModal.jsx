@@ -36,7 +36,7 @@ export default function GameAnalysisModal({
             Stockfish is reviewing the game position by position...
           </p>
           
-          <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderRadius: '999px', height: '10px', overflow: 'hidden', width: '100%', marginBottom: '0.75rem', border: '1px solid var(--border-color)' }}>
+          <div style={{ background: 'var(--bg-widget)', borderRadius: '999px', height: '10px', overflow: 'hidden', width: '100%', marginBottom: '0.75rem', border: '1px solid var(--border-color)' }}>
             <div 
               style={{ 
                 height: '100%', 
@@ -122,8 +122,8 @@ export default function GameAnalysisModal({
             {/* White Stats */}
             <div 
               style={{ 
-                background: 'rgba(255, 255, 255, 0.02)', 
-                border: '1px solid rgba(255, 255, 255, 0.05)', 
+                background: 'var(--bg-widget)', 
+                border: '1px solid var(--border-color)', 
                 borderRadius: '12px', 
                 padding: '1rem', 
                 display: 'flex', 
@@ -134,7 +134,7 @@ export default function GameAnalysisModal({
             >
               <div>
                 <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>White Player</span>
-                <h4 style={{ margin: 0, fontSize: '1rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
                   {playerNames.w}
                 </h4>
               </div>
@@ -149,8 +149,8 @@ export default function GameAnalysisModal({
             {/* Black Stats */}
             <div 
               style={{ 
-                background: 'rgba(255, 255, 255, 0.02)', 
-                border: '1px solid rgba(255, 255, 255, 0.05)', 
+                background: 'var(--bg-widget)', 
+                border: '1px solid var(--border-color)', 
                 borderRadius: '12px', 
                 padding: '1rem', 
                 display: 'flex', 
@@ -161,7 +161,7 @@ export default function GameAnalysisModal({
             >
               <div>
                 <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Black Player</span>
-                <h4 style={{ margin: 0, fontSize: '1rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
                   {playerNames.b}
                 </h4>
               </div>
@@ -175,7 +175,7 @@ export default function GameAnalysisModal({
           </div>
 
           {/* Evaluation SVG Graph */}
-          <div style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ background: 'var(--bg-widget)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-main)' }}>
                 <LineChart size={16} /> Evaluation Chart
@@ -199,13 +199,13 @@ export default function GameAnalysisModal({
                 </defs>
 
                 {/* Gridlines */}
-                <line x1={padding} y1={midY} x2={svgWidth - padding} y2={midY} stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="3 3" />
-                <line x1={padding} y1={midY - 0.5 * (midY - padding)} x2={svgWidth - padding} y2={midY - 0.5 * (midY - padding)} stroke="rgba(255,255,255,0.04)" strokeDasharray="2 2" />
-                <line x1={padding} y1={midY + 0.5 * (midY - padding)} x2={svgWidth - padding} y2={midY + 0.5 * (midY - padding)} stroke="rgba(255,255,255,0.04)" strokeDasharray="2 2" />
+                <line x1={padding} y1={midY} x2={svgWidth - padding} y2={midY} stroke="var(--chart-grid)" strokeWidth="1.5" strokeDasharray="3 3" />
+                <line x1={padding} y1={midY - 0.5 * (midY - padding)} x2={svgWidth - padding} y2={midY - 0.5 * (midY - padding)} stroke="var(--chart-grid-subtle)" strokeDasharray="2 2" />
+                <line x1={padding} y1={midY + 0.5 * (midY - padding)} x2={svgWidth - padding} y2={midY + 0.5 * (midY - padding)} stroke="var(--chart-grid-subtle)" strokeDasharray="2 2" />
                 
                 {/* Advantage Labels */}
-                <text x={padding + 5} y={padding + 10} fill="#10b981" fontSize="9" fontWeight="600" opacity="0.6">White Advantage (+8.0)</text>
-                <text x={padding + 5} y={svgHeight - padding - 5} fill="var(--color-secondary)" fontSize="9" fontWeight="600" opacity="0.6">Black Advantage (-8.0)</text>
+                <text x={padding + 5} y={padding + 10} fill="var(--success)" fontSize="9" fontWeight="600" opacity="0.85">White Advantage (+8.0)</text>
+                <text x={padding + 5} y={svgHeight - padding - 5} fill="var(--color-secondary)" fontSize="9" fontWeight="600" opacity="0.85">Black Advantage (-8.0)</text>
                 <text x={svgWidth - padding - 50} y={midY - 4} fill="var(--text-dim)" fontSize="8">Equality (0.0)</text>
 
                 {/* Graph Path */}
@@ -218,8 +218,8 @@ export default function GameAnalysisModal({
                     cx={p.x}
                     cy={p.y}
                     r={activeMoveIndex === p.index ? "6" : "3"}
-                    fill={activeMoveIndex === p.index ? "var(--color-primary)" : "rgba(255,255,255,0.2)"}
-                    stroke={activeMoveIndex === p.index ? "#fff" : "transparent"}
+                    fill={activeMoveIndex === p.index ? "var(--color-primary)" : "var(--chart-point-inactive)"}
+                    stroke={activeMoveIndex === p.index ? "var(--bg-card)" : "transparent"}
                     strokeWidth="1.5"
                     style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
                     onClick={() => handleGraphClick(p.index)}
@@ -301,7 +301,7 @@ export default function GameAnalysisModal({
                       display: 'grid', 
                       gridTemplateColumns: '2fr 1fr 1fr', 
                       alignItems: 'center',
-                      background: 'rgba(255, 255, 255, 0.01)',
+                      background: 'var(--bg-widget)',
                       padding: '0.5rem',
                       borderRadius: '6px',
                       fontSize: '0.85rem'
@@ -360,8 +360,8 @@ export default function GameAnalysisModal({
                     <div 
                       key={moment.ply}
                       style={{ 
-                        background: 'rgba(255, 255, 255, 0.02)', 
-                        border: '1px solid rgba(255, 255, 255, 0.05)', 
+                        background: 'var(--bg-widget)', 
+                        border: '1px solid var(--border-color)', 
                         borderRadius: '8px', 
                         padding: '0.75rem',
                         display: 'flex',
@@ -386,7 +386,7 @@ export default function GameAnalysisModal({
                           {badge.label}
                         </span>
                         <div>
-                          <strong style={{ fontSize: '0.9rem', color: '#fff' }}>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                             {moveText}
                           </strong>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
