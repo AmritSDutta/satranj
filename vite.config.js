@@ -145,7 +145,8 @@ function viteWebMcpPlugin() {
                 'openai.com',
                 'ollama.com',
                 'api.mistral.ai',
-                'router.requesty.ai'
+                'router.requesty.ai',
+                'api.tokenfactory.nebius.com'
               ];
 
               const parsedHost = parsed ? parsed.hostname.toLowerCase() : '';

@@ -10,7 +10,8 @@ const ALLOWED_TARGET_HOSTS = new Set([
   'openai.com',
   'ollama.com',
   'api.mistral.ai',
-  'router.requesty.ai'
+  'router.requesty.ai',
+  'api.tokenfactory.nebius.com'
 ]);
 
 function isAllowedTarget(targetUrl) {

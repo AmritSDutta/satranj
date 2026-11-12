@@ -5,6 +5,21 @@ export function createLlmProvider(options = {}) {
   const provider = options.provider || 'gemini';
 
   switch (provider) {
+    case 'nebius':
+      return new OpenAICompatibleProvider(
+        {
+          id: 'nebius',
+          name: 'Nebius Token Factory',
+          defaultModel: 'nvidia/nemotron-3-super-120b-a12b',
+          defaultEndpoint: 'https://api.tokenfactory.nebius.com/v1'
+        },
+        {
+          apiKey: options.apiKey,
+          model: options.model || 'nvidia/nemotron-3-super-120b-a12b',
+          endpoint: options.endpoint || 'https://api.tokenfactory.nebius.com/v1'
+        }
+      );
+
     case 'openai':
       return new OpenAICompatibleProvider(
         {

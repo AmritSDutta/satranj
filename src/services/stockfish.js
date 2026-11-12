@@ -13,6 +13,9 @@ export class StockfishService {
       const blobCode = `importScripts('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');`;
       const blob = new Blob([blobCode], { type: 'application/javascript' });
       this.worker = new Worker(URL.createObjectURL(blob));
+      this.worker.onerror = (err) => {
+        console.error('[Stockfish Worker Error]:', err);
+      };
 
       this.worker.onmessage = (e) => {
         const line = e.data;

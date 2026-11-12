@@ -177,7 +177,8 @@ export default function CoachDrawer({
           currentMessages.push({
             role: 'tool',
             content: JSON.stringify(toolResult),
-            tool_call_id: tc.id
+            tool_call_id: tc.id,
+            tool_name: tc.name
           });
         }
       }
@@ -279,13 +280,23 @@ export default function CoachDrawer({
                   className="coach-input-field"
                   value={provider}
                   onChange={(e) => {
-                    setProvider(e.target.value);
-                    if (e.target.value === 'gemini') setModel('gemini-2.5-flash');
-                    else if (e.target.value === 'openai') setModel('gpt-4o-mini');
-                    else if (e.target.value === 'ollama') setModel('llama3.2');
+                    const next = e.target.value;
+                    setProvider(next);
+                    if (next === 'gemini') {
+                      setModel('gemini-2.5-flash');
+                    } else if (next === 'nebius') {
+                      setModel('nvidia/nemotron-3-super-120b-a12b');
+                      setEndpoint('https://api.tokenfactory.nebius.com/v1');
+                    } else if (next === 'openai') {
+                      setModel('gpt-4o-mini');
+                    } else if (next === 'ollama') {
+                      setModel('llama3.2');
+                      setEndpoint('http://localhost:11434');
+                    }
                   }}
                 >
                   <option value="gemini">Google Gemini (Recommended)</option>
+                  <option value="nebius">Nebius Token Factory</option>
                   <option value="openai">OpenAI</option>
                   <option value="ollama">Ollama (Localhost)</option>
                 </select>
@@ -297,7 +308,7 @@ export default function CoachDrawer({
                   <input
                     type="password"
                     className="coach-input-field"
-                    placeholder={`Enter ${provider} key`}
+                    placeholder={`Enter ${provider === 'nebius' ? 'Nebius' : provider} key`}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                   />
@@ -314,13 +325,13 @@ export default function CoachDrawer({
                 />
               </div>
 
-              {provider === 'ollama' && (
+              {(provider === 'ollama' || provider === 'nebius') && (
                 <div>
                   <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Endpoint URL</label>
                   <input
                     type="text"
                     className="coach-input-field"
-                    placeholder="http://localhost:11434"
+                    placeholder={provider === 'nebius' ? 'https://api.tokenfactory.nebius.com/v1' : 'http://localhost:11434'}
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
                   />

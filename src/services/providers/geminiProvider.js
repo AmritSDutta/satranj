@@ -72,27 +72,35 @@ export class GeminiProvider {
       } else if (msg.role === 'user') {
         contents.push({ role: 'user', parts: [{ text: msg.content || '' }] });
       } else if (msg.role === 'assistant') {
-        const parts = [];
-        if (msg.content) parts.push({ text: msg.content });
-        if (Array.isArray(msg.tool_calls)) {
-          for (const tc of msg.tool_calls) {
-            let args = {};
-            try {
-              args = typeof tc.function?.arguments === 'string'
-                ? JSON.parse(tc.function.arguments)
-                : tc.function?.arguments || {};
-            } catch {
-              args = {};
-            }
-            parts.push({
-              functionCall: {
-                name: tc.function?.name,
-                args
+        if (Array.isArray(msg.geminiParts) && msg.geminiParts.length > 0) {
+          contents.push({ role: 'model', parts: msg.geminiParts });
+        } else {
+          const parts = [];
+          if (msg.content) parts.push({ text: msg.content });
+          if (Array.isArray(msg.tool_calls)) {
+            for (const tc of msg.tool_calls) {
+              let args = {};
+              try {
+                args = typeof tc.function?.arguments === 'string'
+                  ? JSON.parse(tc.function.arguments)
+                  : tc.function?.arguments || {};
+              } catch {
+                args = {};
               }
-            });
+              const fcPart = {
+                functionCall: {
+                  name: tc.function?.name,
+                  args
+                }
+              };
+              if (tc.thought_signature) {
+                fcPart.thought_signature = tc.thought_signature;
+              }
+              parts.push(fcPart);
+            }
           }
+          contents.push({ role: 'model', parts });
         }
-        contents.push({ role: 'model', parts });
       } else if (msg.role === 'tool') {
         let responseObj = {};
         try {
@@ -104,7 +112,7 @@ export class GeminiProvider {
           role: 'user',
           parts: [{
             functionResponse: {
-              name: msg.tool_call_id || 'tool_response',
+              name: msg.tool_name || msg.name || msg.tool_call_id || 'tool_response',
               response: responseObj
             }
           }]
@@ -171,7 +179,8 @@ export class GeminiProvider {
       assistantMessage: {
         role: 'assistant',
         content: textContent || null,
-        tool_calls: rawToolCalls.length > 0 ? rawToolCalls : undefined
+        tool_calls: rawToolCalls.length > 0 ? rawToolCalls : undefined,
+        geminiParts: parts
       }
     };
   }
