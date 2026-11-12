@@ -47,7 +47,7 @@ The move log tracks all moves in standard algebraic notation:
 
 ## Chess Clock
 
-Turn-synced countdown timers with the following presets:
+Turn-synced countdown timers. The setup screen offers **Rapid (10+0)**, **Classical (30+0)**, and a **No Clock** casual option; the `ChessClock` component also recognizes additional presets if supplied:
 
 | Preset | Time | Increment | Common Name |
 |--------|------|-----------|-------------|
@@ -56,14 +56,16 @@ Turn-synced countdown timers with the following presets:
 | 5+0 | 5 min | 0 sec | Blitz |
 | 10+0 | 10 min | 0 sec | Rapid |
 | 30+0 | 30 min | 0 sec | Classical |
+| none | — | — | No Clock |
 
 ### Clock Behavior
 
-- **100ms interval accuracy** for precise timing
+- **100ms tick accuracy** for precise timing
 - **Increment handling**: Applied after each move to the player who just moved
 - **Low-time warning**: Visual indicator activates when a player has less than 20 seconds
 - **Tenth-of-second display**: Shows `.T` precision when under 10 seconds remaining
 - **Timeout detection**: Automatically ends the game when a clock reaches zero
+- **Persistence**: The component reports running times back to the parent (`onTimeUpdate`) and can be seeded from a saved game via `initialWhiteTime` / `initialBlackTime`
 
 ## Captured Pieces
 
@@ -110,3 +112,36 @@ After a game ends, the **Analyze Game** feature uses Stockfish to:
 - Display an interactive evaluation graph across the game timeline
 - Show key moments (inaccuracies, mistakes, blunders) with before/after scores
 - Allow jumping directly to any analyzed position for review
+
+## AI Coach
+
+An optional in-game coaching drawer (open with **Ask Coach**) that answers tactical questions and previews candidate moves:
+
+- **Pluggable providers**: Google Gemini, OpenAI, or a local Ollama instance, configured in the drawer's settings panel
+- **Quick prompts**: *Suggest Move*, *Evaluate Position*, *Check Threats*
+- **Tool-driven answers**: the coach can inspect the live position and engine score before replying
+- **Suggested move pills**: click a candidate to highlight it and draw an arrow on the board
+- **Encrypted credentials**: provider keys are stored locally with AES-GCM-256
+
+See [AI Coach](/coach) and [WebMCP Integration](/webmcp) for the full architecture.
+
+## Board Highlights & Arrows
+
+The coach — and any connected WebMCP client — can annotate the board directly:
+
+- **Square tints** via a `square` → CSS color map
+- **Directional arrows** as `[from, to, color]` tuples
+- Highlights merge by default, or replace the previous set when `clearPrevious` is set
+- A clear-highlights button in the coach drawer resets all annotations
+
+## Saved Games
+
+Active matches are auto-saved to `localStorage` (key `satranj_active_save`) on every move and on tab close. Returning to the setup screen surfaces a **Saved Game Detected** card showing move count, mode, and time control, with **Resume** and **Discard** actions:
+
+- Resuming restores the position, history, settings, and remaining clock times
+- The restored game starts **paused** so the player is ready before clocks tick
+- Saves are cleared on checkmate, draw, or when starting a fresh match
+
+## Light / Dark Mode
+
+A header toggle switches between the dark dashboard and a light theme, persisted under `satranj-theme`. The selected mode is applied via a `data-theme` attribute on the document root.

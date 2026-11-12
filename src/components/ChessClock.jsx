@@ -7,10 +7,13 @@ export default function ChessClock({
   onTimeout,
   timePreset,
   gameHistoryLength,
-  resetTrigger
+  resetTrigger,
+  initialWhiteTime,
+  initialBlackTime,
+  onTimeUpdate
 }) {
-  const [whiteTime, setWhiteTime] = useState(600000); // Default: 10 mins (600,000 ms)
-  const [blackTime, setBlackTime] = useState(600000);
+  const [whiteTime, setWhiteTime] = useState(() => initialWhiteTime ?? 600000);
+  const [blackTime, setBlackTime] = useState(() => initialBlackTime ?? 600000);
   const [isTicking, setIsTicking] = useState(false);
   
   const timerRef = useRef(null);
@@ -33,11 +36,18 @@ export default function ChessClock({
 
   // Reset clocks when preset changes or game reset triggers
   useEffect(() => {
-    setWhiteTime(initialTime);
-    setBlackTime(initialTime);
+    setWhiteTime(initialWhiteTime ?? initialTime);
+    setBlackTime(initialBlackTime ?? initialTime);
     setIsTicking(false);
     prevHistoryLength.current = 0;
-  }, [timePreset, resetTrigger, initialTime]);
+  }, [timePreset, resetTrigger, initialTime, initialWhiteTime, initialBlackTime]);
+
+  // Synchronize time updates with parent for persistence
+  useEffect(() => {
+    if (typeof onTimeUpdate === 'function') {
+      onTimeUpdate({ whiteTime, blackTime });
+    }
+  }, [whiteTime, blackTime, onTimeUpdate]);
 
   // Track turn changes to apply increment
   useEffect(() => {

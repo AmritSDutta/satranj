@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause, Sun, Moon, X } from 'lucide-react';
+import { Play, RotateCcw, Award, ArrowLeftRight, Info, Volume2, VolumeX, Eye, Cpu, Users, LogOut, Pause, Sun, Moon, X, Bot, Sparkles } from 'lucide-react';
 
 import { StockfishService } from '../services/stockfish';
 import { audioService } from '../services/audio';
@@ -12,6 +12,9 @@ import MoveHistory from './MoveHistory';
 import CapturedPieces from './CapturedPieces';
 import AboutModal from './AboutModal';
 import GameAnalysisModal from './GameAnalysisModal';
+import CoachDrawer from './CoachDrawer';
+import { initWebMcp, setActiveGameBridge, enqueueChatMessage } from '../services/webMcpService';
+import { saveActiveGame, loadActiveGame, clearActiveGame } from '../services/storage';
 
 // Board Theme Colors mapping
 const boardThemes = {
@@ -78,6 +81,16 @@ export default function Dashboard() {
   // Modals
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
+  // WebMCP and Coach Drawer states
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
+  const [customSquareStyles, setCustomSquareStyles] = useState({});
+  const [customArrows, setCustomArrows] = useState([]);
+  const [clockTimes, setClockTimes] = useState(null);
+  const clockTimesRef = useRef(null);
+  const [savedGame, setSavedGame] = useState(() => loadActiveGame());
+  const activeGameBridgeRef = useRef(null);
+  const makeAIMoveRef = useRef(null);
+
   // Theme mode (Light / Dark)
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('satranj-theme') || 'dark';
@@ -128,6 +141,180 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Initialize WebMCP on mount
+  useEffect(() => {
+    initWebMcp();
+  }, []);
+
+  // Synchronize ActiveGameBridge with WebMCP
+  useEffect(() => {
+    const bridge = {
+      getGameState: () => ({
+        fen: game.fen(),
+        turn: game.turn(),
+        turnName: game.turn() === 'w' ? 'White' : 'Black',
+        history: history.map((h) => (typeof h === 'string' ? h : h.san)),
+        moveCount: history.length,
+        isGameOver: game.isGameOver() || isGameOver,
+        inCheck: game.inCheck(),
+        gameMode,
+        aiDifficulty,
+        timePreset,
+        clocks: clockTimesRef.current,
+        assignedColor
+      }),
+      getLegalMoves: (square) => {
+        try {
+          return game.moves({ verbose: true, square });
+        } catch {
+          return [];
+        }
+      },
+      getPositionAnalysis: async (depth = 8) => {
+        if (!stockfishRef.current) return null;
+        try {
+          const raw = await stockfishRef.current.evaluatePositionPromise(game.fen(), depth);
+          if (!raw) return null;
+
+          let bestMoveSan = '';
+          if (raw.bestMove) {
+            try {
+              const tempGame = new Chess(game.fen());
+              const from = raw.bestMove.substring(0, 2);
+              const to = raw.bestMove.substring(2, 4);
+              const promotion = raw.bestMove.length === 5 ? raw.bestMove[4] : undefined;
+              const mv = tempGame.move({ from, to, promotion });
+              if (mv) bestMoveSan = mv.san;
+            } catch {}
+          }
+
+          const evalType = raw.evalData?.type || 'cp';
+          const evalVal = raw.evalData?.value ?? 0;
+          let formattedScore = '0.00';
+          if (evalType === 'mate') {
+            formattedScore = evalVal > 0 ? `M${evalVal}` : `-M${Math.abs(evalVal)}`;
+          } else {
+            const pawnVal = evalVal / 100;
+            formattedScore = pawnVal >= 0 ? `+${pawnVal.toFixed(2)}` : pawnVal.toFixed(2);
+          }
+
+          return {
+            score: {
+              type: evalType,
+              value: evalVal,
+              formatted: formattedScore
+            },
+            bestMove: raw.bestMove || '',
+            bestMoveSan,
+            pv: raw.pv || [],
+            depth: raw.depth || depth
+          };
+        } catch (e) {
+          return { error: e.message };
+        }
+      },
+      postChatMessage: (payload) => {
+        enqueueChatMessage(payload);
+        if (payload.highlightSquares || payload.arrows) {
+          if (payload.clearPrevious) {
+            setCustomSquareStyles(payload.highlightSquares || {});
+            setCustomArrows(payload.arrows || []);
+          } else {
+            setCustomSquareStyles((prev) => ({ ...prev, ...(payload.highlightSquares || {}) }));
+            setCustomArrows((prev) => [...prev, ...(payload.arrows || [])]);
+          }
+        }
+      },
+      highlightBoard: ({ highlightSquares, arrows, clearPrevious }) => {
+        if (clearPrevious) {
+          setCustomSquareStyles(highlightSquares || {});
+          setCustomArrows(arrows || []);
+        } else {
+          setCustomSquareStyles((prev) => ({ ...prev, ...(highlightSquares || {}) }));
+          setCustomArrows((prev) => [...prev, ...(arrows || [])]);
+        }
+      }
+    };
+
+    activeGameBridgeRef.current = bridge;
+    setActiveGameBridge(bridge);
+  }, [game, fen, history, isGameOver, gameMode, aiDifficulty, timePreset, assignedColor]);
+
+  // Dev SSE bridge connection & state sync
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    let es;
+    try {
+      es = new EventSource('/api/mcp/sse');
+      es.addEventListener('chat_message', (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          activeGameBridgeRef.current?.postChatMessage?.(data);
+        } catch {}
+      });
+      es.addEventListener('highlight_board', (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          activeGameBridgeRef.current?.highlightBoard?.(data);
+        } catch {}
+      });
+    } catch {}
+
+    return () => {
+      if (es) es.close();
+    };
+  }, []);
+
+  // Sync state to Vite dev bridge for external MCP tools
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    try {
+      fetch('/api/mcp/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fen: game.fen(),
+          turn: game.turn(),
+          turnName: game.turn() === 'w' ? 'White' : 'Black',
+          history: history.map((h) => (typeof h === 'string' ? h : h.san)),
+          moveCount: history.length,
+          isGameOver: game.isGameOver() || isGameOver,
+          inCheck: game.inCheck(),
+          gameMode,
+          aiDifficulty,
+          timePreset,
+          assignedColor,
+          clocks: clockTimesRef.current,
+          evaluation
+        })
+      }).catch(() => {});
+    } catch {}
+  }, [fen, history, isGameOver, gameMode, aiDifficulty, timePreset, assignedColor, evaluation, game]);
+
+  // Persist game on tab close/unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (gameStarted && !isGameOver && history.length > 0) {
+        saveActiveGame({
+          fen: game.fen(),
+          history,
+          historyFens,
+          activeMoveIndex,
+          gameMode,
+          userColor,
+          assignedColor,
+          aiDifficulty,
+          timePreset,
+          boardTheme,
+          isFlipped,
+          clocks: clockTimesRef.current
+        });
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [gameStarted, isGameOver, history, historyFens, activeMoveIndex, gameMode, userColor, assignedColor, aiDifficulty, timePreset, boardTheme, isFlipped, game]);
+
   // Update Stockfish callbacks dynamically to ensure fresh closures and turn checks
   useEffect(() => {
     if (stockfishRef.current) {
@@ -139,7 +326,7 @@ export default function Dashboard() {
             const aiColor = assignedColor === 'w' ? 'b' : 'w';
             // ONLY execute AI moves when it is actually the AI's turn (in AI mode) and the game is not paused
             if (gameMode === 'ai' && game.turn() === aiColor && !isPaused) {
-              makeAIMove(bestMove);
+              makeAIMoveRef.current?.(bestMove);
             }
           }
         }
@@ -166,11 +353,13 @@ export default function Dashboard() {
       // In PVP mode or when user is playing, request evaluation score for UI
       stockfishRef.current.evaluatePosition(game.fen(), 8);
     }
-  }, [fen, gameMode, isGameOver, gameStarted, assignedColor, isPaused]);
+  }, [fen, gameMode, isGameOver, gameStarted, assignedColor, isPaused, game, aiDifficulty]);
 
   // Sync game over conditions
   useEffect(() => {
     if (game.isGameOver()) {
+      clearActiveGame();
+      setSavedGame(null);
       setIsGameOver(true);
       if (soundEnabled) audioService.playGameOver();
 
@@ -199,7 +388,7 @@ export default function Dashboard() {
         setShowGameOverModal(true);
       }
     }
-  }, [fen]);
+  }, [fen, game, soundEnabled]);
 
   // Execute a chess move securely
   const executeMove = (moveConfig) => {
@@ -234,6 +423,27 @@ export default function Dashboard() {
         setHistoryFens(updatedFens);
         setActiveMoveIndex(updatedFens.length - 1);
 
+        // Auto-save active game state (skip and clear if game is over)
+        if (!newGame.isGameOver()) {
+          saveActiveGame({
+            fen: newGame.fen(),
+            history: newHistory,
+            historyFens: updatedFens,
+            activeMoveIndex: updatedFens.length - 1,
+            gameMode,
+            userColor,
+            assignedColor,
+            aiDifficulty,
+            timePreset,
+            boardTheme,
+            isFlipped,
+            clocks: clockTimesRef.current
+          });
+        } else {
+          clearActiveGame();
+          setSavedGame(null);
+        }
+
         return true;
       }
     } catch (e) {
@@ -251,8 +461,16 @@ export default function Dashboard() {
 
     executeMove({ from, to, promotion });
   };
+  makeAIMoveRef.current = makeAIMove;
 
   const startGame = () => {
+    clearActiveGame();
+    setSavedGame(null);
+    setClockTimes(null);
+    clockTimesRef.current = null;
+    setCustomSquareStyles({});
+    setCustomArrows([]);
+
     let color = userColor;
     if (color === 'random') {
       color = Math.random() < 0.5 ? 'w' : 'b';
@@ -282,6 +500,38 @@ export default function Dashboard() {
     setShowAnalysisModal(false);
     
     setGameStarted(true);
+  };
+
+  const handleResumeGame = (saved) => {
+    if (!saved) return;
+    try {
+      const restored = new Chess(saved.fen);
+      setGame(restored);
+      setFen(saved.fen);
+      setHistory(saved.history || []);
+      setHistoryFens(saved.historyFens || [saved.fen]);
+      setActiveMoveIndex(saved.activeMoveIndex ?? (saved.history ? saved.history.length : 0));
+      setGameMode(saved.gameMode || 'ai');
+      setUserColor(saved.userColor || 'w');
+      setAssignedColor(saved.assignedColor || 'w');
+      setAiDifficulty(saved.aiDifficulty ?? 8);
+      setTimePreset(saved.timePreset || '10+0');
+      setBoardTheme(saved.boardTheme || 'emerald');
+      setIsFlipped(Boolean(saved.isFlipped));
+      if (saved.clocks) {
+        setClockTimes(saved.clocks);
+        clockTimesRef.current = saved.clocks;
+      }
+      setIsPaused(true);
+      setIsGameOver(false);
+      setShowGameOverModal(false);
+      setGameStarted(true);
+      setSavedGame(null);
+    } catch (err) {
+      console.error('Failed to restore saved game:', err);
+      clearActiveGame();
+      setSavedGame(null);
+    }
   };
 
   const getPlayerName = (position) => {
@@ -328,6 +578,13 @@ export default function Dashboard() {
   };
 
   const resetGame = () => {
+    clearActiveGame();
+    setSavedGame(null);
+    setClockTimes(null);
+    clockTimesRef.current = null;
+    setCustomSquareStyles({});
+    setCustomArrows([]);
+
     const freshGame = new Chess();
     setGame(freshGame);
     setFen(freshGame.fen());
@@ -388,6 +645,8 @@ export default function Dashboard() {
 
   // Clock timeout handler
   const handleTimeout = (color) => {
+    clearActiveGame();
+    setSavedGame(null);
     setIsGameOver(true);
     setGameOverReason('timeout');
     setWinner(color === 'w' ? 'b' : 'w');
@@ -567,7 +826,7 @@ export default function Dashboard() {
     const styles = {};
     const lastMove = activeMoveIndex > 0 && history[activeMoveIndex - 1] ? history[activeMoveIndex - 1] : null;
 
-    if (!lastMove) return styles;
+    if (!lastMove) return { ...styles, ...customSquareStyles };
 
     // Helper to check if square is light
     const isLightSquare = (square) => {
@@ -592,7 +851,7 @@ export default function Dashboard() {
       background: `linear-gradient(rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.2)), ${fromSqColor}`
     };
 
-    return styles;
+    return { ...styles, ...customSquareStyles };
   };
 
   // Helper labels
@@ -742,6 +1001,43 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* Resume In-Progress Game Card */}
+            {savedGame && (
+              <div className="resume-game-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Sparkles size={14} /> Saved Game Detected
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                    {Math.ceil((savedGame.history?.length || 0) / 2)} moves played
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
+                  {savedGame.gameMode === 'ai' ? `vs Stockfish (Level ${savedGame.aiDifficulty})` : 'Local Hotseat PvP'} • {savedGame.timePreset === 'none' ? 'Casual' : savedGame.timePreset}
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
+                    onClick={() => handleResumeGame(savedGame)}
+                  >
+                    <Play size={14} fill="currentColor" /> Resume Saved Game
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
+                    onClick={() => {
+                      clearActiveGame();
+                      setSavedGame(null);
+                    }}
+                    title="Discard saved game"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Start Button */}
             <button className="btn-start-match" onClick={startGame}>
               <Play size={20} fill="#fff" /> Start Match
@@ -881,7 +1177,8 @@ export default function Dashboard() {
                     allowDragging: canDrag,
                     animationDurationInMs: 200,
                     onPieceDrop: onPieceDrop,
-                    squareStyles: getCustomSquareStyles()
+                    squareStyles: getCustomSquareStyles(),
+                    arrows: customArrows
                   }}
                 />
               </div>
@@ -929,6 +1226,11 @@ export default function Dashboard() {
                 timePreset={timePreset}
                 gameHistoryLength={history.length}
                 resetTrigger={resetTrigger}
+                initialWhiteTime={clockTimes?.whiteTime}
+                initialBlackTime={clockTimes?.blackTime}
+                onTimeUpdate={(times) => {
+                  clockTimesRef.current = times;
+                }}
               />
             )}
           </div>
@@ -1005,6 +1307,9 @@ export default function Dashboard() {
             <button className="btn btn-secondary" onClick={handleUndo} disabled={history.length === 0 || isGameOver || isPaused}>
               Undo Move
             </button>
+            <button className="btn btn-secondary" onClick={() => setIsCoachOpen(true)}>
+              <Bot size={14} /> Ask Coach
+            </button>
             <button className="btn btn-secondary" onClick={() => setIsFlipped(!isFlipped)}>
               <ArrowLeftRight size={14} /> Flip Board
             </button>
@@ -1064,6 +1369,17 @@ export default function Dashboard() {
         playerNames={{
           w: assignedColor === 'w' ? getPlayerName('bottom') : getPlayerName('top'),
           b: assignedColor === 'b' ? getPlayerName('bottom') : getPlayerName('top')
+        }}
+      />
+
+      {/* AI Coach Slide-Out Drawer (WebMCP Powered) */}
+      <CoachDrawer
+        isOpen={isCoachOpen}
+        onClose={() => setIsCoachOpen(false)}
+        activeGameBridge={activeGameBridgeRef.current}
+        onClearHighlights={() => {
+          setCustomSquareStyles({});
+          setCustomArrows([]);
         }}
       />
     </div>

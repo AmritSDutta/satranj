@@ -100,6 +100,7 @@ export class StockfishService {
       this.setTurn(activeColor);
 
       let lastEval = null;
+      let lastPv = [];
       let isResolved = false;
       const prevOnMessage = this.worker.onmessage;
 
@@ -110,6 +111,8 @@ export class StockfishService {
           resolve({
             evalData: lastEval || { type: 'cp', value: 0 },
             bestMove: '',
+            pv: lastPv,
+            depth,
             isTimeout: true
           });
         }
@@ -118,19 +121,27 @@ export class StockfishService {
       this.worker.onmessage = (e) => {
         const line = e.data;
 
-        // Parse evaluation from info line
-        if (line.startsWith('info ') && line.includes('score ')) {
+        // Parse evaluation and principal variation from info line
+        if (line.startsWith('info ')) {
           const parts = line.split(' ');
-          const scoreIdx = parts.indexOf('score');
-          if (scoreIdx !== -1 && scoreIdx + 2 < parts.length) {
-            const type = parts[scoreIdx + 1]; // 'cp' or 'mate'
-            const valStr = parts[scoreIdx + 2];
-            let value = parseInt(valStr, 10);
-            if (!isNaN(value)) {
-              if (this.currentTurn === 'b') {
-                value = -value;
+          if (line.includes('score ')) {
+            const scoreIdx = parts.indexOf('score');
+            if (scoreIdx !== -1 && scoreIdx + 2 < parts.length) {
+              const type = parts[scoreIdx + 1]; // 'cp' or 'mate'
+              const valStr = parts[scoreIdx + 2];
+              let value = parseInt(valStr, 10);
+              if (!isNaN(value)) {
+                if (this.currentTurn === 'b') {
+                  value = -value;
+                }
+                lastEval = { type, value };
               }
-              lastEval = { type, value };
+            }
+          }
+          if (line.includes(' pv ')) {
+            const pvIdx = parts.indexOf('pv');
+            if (pvIdx !== -1 && pvIdx + 1 < parts.length) {
+              lastPv = parts.slice(pvIdx + 1);
             }
           }
         }
@@ -146,7 +157,9 @@ export class StockfishService {
             this.worker.onmessage = prevOnMessage; // Restore standard listener
             resolve({
               evalData: lastEval || { type: 'cp', value: 0 },
-              bestMove: bestMove !== '(none)' ? bestMove : ''
+              bestMove: bestMove !== '(none)' ? bestMove : '',
+              pv: lastPv,
+              depth
             });
           }
         }

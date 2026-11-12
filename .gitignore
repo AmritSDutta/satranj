@@ -23,5 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 *.md
+!README.md
+!CLAUDE.md
 .env*
 .env.*

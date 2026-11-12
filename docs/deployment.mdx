@@ -32,7 +32,7 @@ Serves the `dist/` folder at `http://localhost:4173` by default.
 
 ## Static Hosting
 
-Satranj is a **fully client-side application** with no backend server. It can be deployed to any static hosting provider:
+Satranj is a **fully client-side application with no required backend server**. It can be deployed to any static hosting provider; an optional serverless function proxies AI provider requests when available.
 
 ### Cloudflare Pages
 
@@ -45,6 +45,9 @@ Satranj is a **fully client-side application** with no backend server. It can be
 |----------|-------|
 | `VITE_FARO_COLLECTOR_URL` | Your Faro collector endpoint |
 | `FARO_API_KEY` | Your Grafana Cloud API key |
+
+5. Cloudflare Pages automatically deploys the `functions/` directory as **Pages Functions**, so `/api/proxy` is available in production without extra configuration.
+6. The `public/_headers` file is copied into `dist/` and applies security and CORS headers on hosts that honor it.
 
 ### Vercel
 
@@ -83,6 +86,27 @@ server {
     }
 }
 ```
+
+## Serverless AI Proxy (Cloudflare Pages Function)
+
+The AI Coach sends provider requests through the same-origin `/api/proxy` endpoint. In production this is served by a **Cloudflare Pages Function** at `functions/api/proxy.js`:
+
+- Handles `OPTIONS` preflight with `Access-Control-Allow-*` headers.
+- Validates the `targetUrl` against the same host allow-list as the dev middleware and rejects anything else with `403`.
+- Forwards only `Content-Type` and `Authorization` headers, then streams the upstream response back.
+
+```javascript
+// functions/api/proxy.js
+export async function onRequestPost(context) {
+  const { targetUrl, body, headers, method } = await context.request.json();
+  if (!isAllowedTarget(targetUrl)) {
+    return new Response(JSON.stringify({ error: 'Blocked host' }), { status: 403 });
+  }
+  // ...forward to the provider...
+}
+```
+
+> **Note:** On hosts other than Cloudflare Pages the function is absent. The providers detect the missing endpoint and fall back to a direct `fetch` to the vendor, which then depends on the vendor's CORS policy and the app's CSP `connect-src`.
 
 ## Environment Variables at Build Time
 

@@ -18,6 +18,10 @@
         "pages": ["architecture", "components", "services"]
       },
       {
+        "group": "AI Coach & WebMCP",
+        "pages": ["coach", "webmcp"]
+      },
+      {
         "group": "Configuration",
         "pages": ["configuration", "deployment"]
       },

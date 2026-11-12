@@ -1,0 +1,102 @@
+---
+title: AI Coach
+description: The in-app LLM chess coach — pluggable providers, encrypted credentials, and the tool-calling agent loop.
+---
+
+# AI Coach
+
+The **AI Coach** is a glassmorphic slide-out drawer (`src/components/CoachDrawer.jsx`) that gives tactical advice, evaluates positions, and previews candidate moves on the board. It talks to a pluggable LLM provider and drives the board through the same WebMCP tools documented in [WebMCP](/webmcp).
+
+Open it from the **Ask Coach** button in the control footer of an active game.
+
+## Capabilities
+
+- **Ask questions** about the current position in free text.
+- **Quick action chips**: *Suggest Move*, *Evaluate Position*, and *Check Threats*.
+- **Suggested move pills**: clicking a candidate move highlights its `from`/`to` squares and draws an arrow on the board.
+- **Live incoming messages**: advice posted by a visiting external agent appears in the same stream (see [WebMCP](/webmcp)).
+- **Encrypted provider settings** stored locally with AES-GCM-256.
+
+## Providers
+
+Coach messages are dispatched through a provider abstraction so the drawer is decoupled from any single vendor. `createLlmProvider(options)` in `src/services/providers/providerFactory.js` returns an object implementing the `ILlmProvider` contract from `src/services/providers/types.js`.
+
+<Tree>
+  <Tree.Folder name="src" defaultOpen>
+    <Tree.Folder name="services" defaultOpen>
+      <Tree.Folder name="providers" defaultOpen>
+        <Tree.File name="types.js" highlight />
+        <Tree.File name="providerFactory.js" highlight />
+        <Tree.File name="openAICompatibleProvider.js" />
+        <Tree.File name="geminiProvider.js" />
+      </Tree.Folder>
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+| Provider | `id` | Default model | Transport |
+|----------|------|---------------|-----------|
+| Google Gemini | `gemini` | `gemini-2.5-flash` | `generateContent` REST with native function calling |
+| OpenAI | `openai` | `gpt-4o-mini` | OpenAI-compatible `/v1/chat/completions` |
+| Ollama (local) | `ollama` | `llama3.2` | OpenAI-compatible endpoint on `http://localhost:11434` |
+
+`OpenAICompatibleProvider` is the shared base for any OpenAI-style API and normalizes the `endpoint` to end in `/v1/chat/completions`. `GeminiProvider` translates the message array into Gemini `contents`/`functionCall`/`functionResponse` parts and maps tool declarations to `functionDeclarations`.
+
+Both providers prefer to POST through the same-origin `/api/proxy` endpoint when available (dev middleware or the Cloudflare Pages Function) and transparently fall back to a direct `fetch` when the proxy is absent.
+
+## Provider contract
+
+All providers expose:
+
+| Method | Signature | Purpose |
+|--------|-----------|---------|
+| `generateText` | `(prompt, systemInstruction?) => Promise<string>` | Single-shot text generation |
+| `chat` | `(messages, tools?) => Promise<ProviderChatResult>` | Multi-turn conversation with optional tool calling |
+
+`chat` returns a `ProviderChatResult` of `{ content, toolCalls, assistantMessage }`, where each `toolCall` is `{ id, name, args }` and `assistantMessage` is the raw assistant turn to append back into the conversation when feeding tool results.
+
+## Tool-calling agent loop
+
+When you send a message, `handleSendMessage` runs a bounded agent loop (up to **4 turns**):
+
+```text
+User message
+  -> llm.chat(messages, toolDecls)
+  -> if no toolCalls: render content, stop
+  -> else: append assistantMessage
+        -> for each toolCall: execute via satranjWebMcpTools, append tool result
+        -> loop again
+```
+
+The WebMCP tool schemas are passed through as declarations:
+
+```javascript
+const toolDecls = satranjWebMcpTools.map((t) => ({
+  name: t.name,
+  description: t.description,
+  parameters: t.inputSchema,
+}));
+```
+
+When the model calls `post_chat_message`, its `message` and `suggestedMoves` arguments become the rendered coach reply.
+
+## Encrypted credential vault
+
+Provider settings are never stored in plaintext. `src/utils/cryptoStorage.js` implements an AES-GCM-256 vault backed by the Web Crypto API:
+
+- A **non-extractable** master key (`extractable: false`) is generated once and stored in IndexedDB (`SatranjSecureVault`). Raw key bytes cannot be read even under XSS.
+- Ciphertext in `localStorage` uses the format `__ENC__:v1:<base64 IV>:<base64 ciphertext>`.
+- A decrypted mirror is cached in `sessionStorage` for fast reads.
+
+All keys are namespaced with the `satranj_` prefix:
+
+| Key | Contents |
+|-----|----------|
+| `satranj_active_provider` | Selected provider id (`gemini` \| `openai` \| `ollama`) |
+| `satranj_<provider>_api_key` | Encrypted API key for that provider |
+| `satranj_<provider>_model` | Model name |
+| `satranj_<provider>_endpoint` | Custom endpoint (Ollama) |
+
+Exposed helpers: `setItemEncrypted`, `getItemEncrypted`, `encryptString`, `decryptString`, `removeItem`.
+
+> **Note:** Credentials live only in the browser. They are never sent anywhere except the selected provider (usually via the same-origin proxy).

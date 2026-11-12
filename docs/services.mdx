@@ -90,7 +90,9 @@ Returns:
 {
   evalData: { type: 'cp' | 'mate', value: number },
   bestMove: string,      // UCI move notation or empty string
-  isTimeout: boolean     // true if evaluation timed out
+  pv: string[],          // principal variation (UCI moves)
+  depth: number,         // requested depth
+  isTimeout: boolean     // present and true only on timeout
 }
 ```
 
@@ -204,3 +206,59 @@ Closes the AudioContext and releases resources. Called on component unmount.
 - Uses `window.AudioContext || window.webkitAudioContext` for Safari support
 - Context is created lazily on first `play*()` call (after user interaction)
 - Handles suspended contexts via `ctx.resume()`
+
+---
+
+## Storage Service
+
+**File:** `src/services/storage.js`
+
+Persists the active match so an interrupted game can be resumed.
+
+### Functions
+
+| Function | Description |
+|----------|-------------|
+| `saveActiveGame(gameState)` | Serializes the game state to `localStorage` under `satranj_active_save` |
+| `loadActiveGame()` | Returns the parsed save object, or `null` when absent/invalid |
+| `clearActiveGame()` | Removes the save |
+
+The saved payload (version `1`) includes `fen`, `history`, `historyFens`, `activeMoveIndex`, `gameMode`, `userColor`, `assignedColor`, `aiDifficulty`, `timePreset`, `boardTheme`, `isFlipped`, `clocks`, and `isPaused: true`. Saves without a `fen` are ignored.
+
+---
+
+## WebMCP Service
+
+**File:** `src/services/webMcpService.js`
+
+Registers Satranj's game tools on the browser Model Context Protocol surface and brokers messages between tools and the Coach Drawer.
+
+### Key Exports
+
+| Export | Purpose |
+|--------|---------|
+| `satranjWebMcpTools` | The five tool definitions (`post_chat_message`, `get_game_state`, `get_legal_moves`, `get_position_analysis`, `highlight_board`) |
+| `initWebMcp()` | Patches `window` / `document` / `navigator` `modelContext` with the tools and `listTools`/`getTools` accessors |
+| `setActiveGameBridge(bridge)` | Connects the React dashboard state to the tool executor |
+| `enqueueChatMessage(msg)` | Appends a message to the in-memory inbox (capped at 50) and notifies subscribers |
+| `subscribeChatMessages(cb)` | Registers a listener; returns an unsubscribe function |
+| `drainChatMessages()` | Returns a snapshot of the inbox |
+
+See [WebMCP Integration](/webmcp) for the tool schemas and transports.
+
+---
+
+## LLM Providers
+
+**Directory:** `src/services/providers/`
+
+A pluggable provider layer used by the AI Coach.
+
+| File | Purpose |
+|------|---------|
+| `types.js` | JSDoc typedefs (`ILlmProvider`, `ProviderChatMessage`, `ProviderToolDecl`, `ProviderChatResult`) and `SUPPORTED_PROVIDERS` |
+| `providerFactory.js` | `createLlmProvider(options)` — returns a provider instance by id |
+| `openAICompatibleProvider.js` | Shared base for OpenAI / Ollama / OpenAI-style APIs |
+| `geminiProvider.js` | Google Gemini provider with native function calling |
+
+Both providers expose `generateText` and `chat`, prefer to route requests through the same-origin `/api/proxy`, and fall back to a direct `fetch`. See [AI Coach](/coach) for the full contract and agent loop.

@@ -12,6 +12,7 @@ description: Project structure, game state flow, and key architectural patterns.
     <Tree.File name="docs.json" highlight />
     <Tree.File name="custom.css" />
     <Tree.File name="architecture.mdx" />
+    <Tree.File name="coach.mdx" />
     <Tree.File name="components.mdx" />
     <Tree.File name="configuration.mdx" />
     <Tree.File name="deployment.mdx" />
@@ -20,9 +21,15 @@ description: Project structure, game state flow, and key architectural patterns.
     <Tree.File name="installation.mdx" />
     <Tree.File name="license.mdx" />
     <Tree.File name="services.mdx" />
+    <Tree.File name="webmcp.mdx" />
+  </Tree.Folder>
+  <Tree.Folder name="functions" defaultOpen>
+    <Tree.Folder name="api">
+      <Tree.File name="proxy.js" highlight />
+    </Tree.Folder>
   </Tree.Folder>
   <Tree.Folder name="public">
-    <Tree.File name="favicon.ico" />
+    <Tree.File name="_headers" />
   </Tree.Folder>
   <Tree.Folder name="src" defaultOpen>
     <Tree.Folder name="assets">
@@ -34,20 +41,33 @@ description: Project structure, game state flow, and key architectural patterns.
       <Tree.File name="AboutModal.jsx" />
       <Tree.File name="CapturedPieces.jsx" />
       <Tree.File name="ChessClock.jsx" />
+      <Tree.File name="CoachDrawer.jsx" highlight />
       <Tree.File name="Dashboard.jsx" highlight />
       <Tree.File name="EvaluationBar.jsx" />
       <Tree.File name="GameAnalysisModal.jsx" />
       <Tree.File name="MoveHistory.jsx" />
     </Tree.Folder>
     <Tree.Folder name="services" defaultOpen>
+      <Tree.Folder name="providers" defaultOpen>
+        <Tree.File name="types.js" />
+        <Tree.File name="providerFactory.js" />
+        <Tree.File name="openAICompatibleProvider.js" />
+        <Tree.File name="geminiProvider.js" />
+      </Tree.Folder>
       <Tree.File name="audio.js" />
       <Tree.File name="stockfish.js" highlight />
+      <Tree.File name="storage.js" />
+      <Tree.File name="webMcpService.js" highlight />
+    </Tree.Folder>
+    <Tree.Folder name="utils">
+      <Tree.File name="cryptoStorage.js" />
     </Tree.Folder>
     <Tree.File name="App.css" />
     <Tree.File name="App.jsx" highlight />
     <Tree.File name="index.css" />
     <Tree.File name="main.jsx" highlight />
   </Tree.Folder>
+  <Tree.File name=".env.example" />
   <Tree.File name=".gitignore" />
   <Tree.File name=".oxlintrc.json" />
   <Tree.File name="index.html" />
@@ -60,7 +80,7 @@ description: Project structure, game state flow, and key architectural patterns.
 
 ### `index.html`
 
-Minimal HTML shell containing a `#root` div and the module script import.
+Minimal HTML shell containing a `#root` div and the module script import. It also declares the app's **Content-Security-Policy**, restricting `connect-src` to the Faro collector, the allow-listed AI provider hosts, and localhost dev sockets.
 
 ### `src/main.jsx`
 
@@ -103,6 +123,31 @@ Drag-and-drop moves are disabled when the user is viewing a past position (`acti
 
 The Stockfish WebAssembly engine is loaded from a CDN using a **Blob URL + `importScripts()`** pattern. This circumvents CORS restrictions that would otherwise prevent loading external worker scripts.
 
+### WebMCP Game Bridge
+
+The Dashboard registers a live **bridge** with the WebMCP service so tools can read state and paint the board:
+
+```javascript
+setActiveGameBridge({
+  getGameState, getLegalMoves, getPositionAnalysis,
+  postChatMessage, highlightBoard,
+});
+```
+
+Tool-authored highlights flow into `customSquareStyles` / `customArrows` React state, which the `<Chessboard>` renders.
+
+### Provider Abstraction
+
+The AI Coach never talks to a vendor SDK directly. `createLlmProvider()` returns an object implementing `ILlmProvider` (`generateText`, `chat`), and the drawer runs a bounded tool-calling loop against it. See [AI Coach](/coach).
+
+### Encrypted Credential Vault
+
+API keys are stored with **AES-GCM-256** via the Web Crypto API. A non-extractable master key lives in IndexedDB; ciphertext (`__ENC__:v1:<iv>:<cipher>`) lives in `localStorage` with a `sessionStorage` cache. See `src/utils/cryptoStorage.js`.
+
+### Game Persistence
+
+The active game is serialized to `localStorage` (`satranj_active_save`) on each move and on `beforeunload`, then offered for resume on the setup screen. See `src/services/storage.js`.
+
 ### State Management
 
 The application uses React `useState` hooks for all state. The Dashboard component serves as the central state container, passing props down to child components. Key state includes:
@@ -118,6 +163,12 @@ The application uses React `useState` hooks for all state. The Dashboard compone
 | `isFlipped` | boolean | Board orientation |
 | `isPaused` | boolean | Game paused state |
 | `isGameOver` | boolean | Game ended flag |
+| `isCoachOpen` | boolean | Coach drawer visibility |
+| `customSquareStyles` | object | Coach/client square highlights |
+| `customArrows` | array | Coach/client board arrows |
+| `clockTimes` | object \| null | Persisted clock times for resume |
+| `savedGame` | object \| null | Detected in-progress save |
+| `theme` | string | `'dark'` or `'light'` UI mode |
 
 ## Styling Architecture
 
@@ -130,6 +181,8 @@ CSS custom properties defined in `:root` (dark mode) and `[data-theme='light']` 
 - **Typography**: `--font-sans` (Outfit), `--font-mono` (JetBrains Mono)
 - **Borders**: `--border-color` with subtle glow variants
 - **Transitions**: Smooth and fast cubic-bezier curves
+
+`src/index.css` also carries the coach drawer styles (`.coach-drawer`, `.coach-bubble`, `.coach-chip`, `.suggested-move-pill`, `.webmcp-pill`, `.coach-settings-panel`).
 
 ### Layout
 
@@ -158,8 +211,10 @@ The user configures:
 - **Game mode**: PvP or AI
 - **Color**: White, Black, or Random (AI mode only)
 - **Difficulty**: Stockfish search depth (AI mode only)
-- **Time control**: Clock preset (1+0, 3+2, 5+0, 10+0, 30+0)
+- **Time control**: Clock preset (10+0, 30+0, or no clock)
 - **Board theme**: Visual color scheme
+
+If a saved game exists, a **Resume Saved Game** card is shown here.
 
 ### 2. Active Game (`gameStarted = true`)
 
@@ -173,70 +228,65 @@ Once started, the game enters active mode:
 ### 3. Move Execution
 
 ```
-User drops piece → onPieceDrop callback
-  → Validates: correct turn, not in review mode, game not over/paused
-  → Creates new Chess() instance from current FEN
-  → Attempts move via chess.js
-  → On success:
-    → Plays appropriate sound (move/capture/check/game-over)
-    → Updates game state, FEN, history array
-    → Appends new FEN to historyFens
-    → Triggers Stockfish evaluation
-    → AI mode: triggers Stockfish best move calculation
+User drops piece -> onPieceDrop callback
+  -> Validates: correct turn, not in review mode, game not over/paused
+  -> Creates new Chess() instance from current FEN
+  -> Attempts move via chess.js
+  -> On success:
+    -> Plays appropriate sound (move/capture/check/game-over)
+    -> Updates game state, FEN, history array
+    -> Appends new FEN to historyFens
+    -> Auto-saves the active game to localStorage
+    -> Triggers Stockfish evaluation
+    -> AI mode: triggers Stockfish best move calculation
 ```
 
 ### 4. AI Move (Stockfish)
 
 ```
 Stockfish.calculateBestMove(fen, depth)
-  → Sends "position fen ..." to worker
-  → Sends "go depth N" to worker
-  → Worker responds with "bestmove e2e4"
-  → makeAIMove() parses UCI notation
-  → Calls executeMove() with parsed from/to/san
+  -> Sends "position fen ..." to worker
+  -> Sends "go depth N" to worker
+  -> Worker responds with "bestmove e2e4"
+  -> makeAIMove() parses UCI notation
+  -> Calls executeMove() with parsed from/to/san
 ```
 
 ## Architecture Diagram
 
+The UI is a single dashboard that fans out to presentational components:
+
 ```mermaid
 graph TD
-  subgraph BrowserRuntime["Browser Runtime"]
-    subgraph ReactUI["React Components"]
-      Dashboard["Dashboard.jsx - Central State Container"]
-      Board["Chess Board - react-chessboard"]
-      Clock["ChessClock.jsx"]
-      EvalBar["EvaluationBar.jsx"]
-      MoveLog["MoveHistory.jsx"]
-      Captured["CapturedPieces.jsx"]
-    end
-    subgraph Services["src/services"]
-      StockfishJS["stockfish.js - Web Worker Wrapper"]
-      Audio["Web Audio Synthesizer"]
-    end
-    subgraph State["Game State"]
-      GameState[("React useState - FEN, History, Evaluation")]
-    end
-    subgraph Monitoring["Monitoring"]
-      Faro["Faro Error Boundary + RUM Tracing"]
-    end
-  end
-  subgraph External["External Resources"]
-    CDN["Stockfish CDN WebAssembly"]
-    Fonts["Outfit / JetBrains Mono"]
-  end
-  Dashboard -->|props| Board
-  Dashboard -->|props| Clock
-  Dashboard -->|props| EvalBar
-  Dashboard -->|props| MoveLog
-  Dashboard -->|props| Captured
-  Dashboard -->|manages| GameState
-  Board -->|move events| GameState
-  GameState -->|FEN + depth| StockfishJS
-  StockfishJS -->|position/go/bestmove| CDN
-  StockfishJS -->|evaluation| GameState
-  GameState -->|SAN + event| Audio
-  Audio -->|synthesized sounds| Board
-  Faro -->|wraps| Dashboard
-  CDN -->|load wasm| StockfishJS
-  Fonts -->|load| ReactUI
+  Dashboard["Dashboard.jsx"] --> Board["Chessboard"]
+  Dashboard --> Clock["ChessClock.jsx"]
+  Dashboard --> EvalBar["EvaluationBar.jsx"]
+  Dashboard --> MoveLog["MoveHistory.jsx"]
+  Dashboard --> Coach["CoachDrawer.jsx"]
+```
+
+Under the hood, a single React state object feeds the engine, storage, audio, and the WebMCP registry:
+
+```mermaid
+graph TD
+  Dashboard["Dashboard.jsx"] --> State[("React state")]
+  State --> Engine["stockfish.js"]
+  State --> Storage["storage.js"]
+  State --> Audio["audio.js"]
+  State --> Mcp["webMcpService.js"]
+```
+
+## Coach Request Flow
+
+```mermaid
+flowchart TD
+  User["User message"] --> Drawer["CoachDrawer.jsx"]
+  Drawer --> Provider["createLlmProvider"]
+  Provider -->|chat| Api["Provider API via /api/proxy"]
+  Api -->|toolCalls| Drawer
+  Drawer -->|execute| Tools["satranjWebMcpTools"]
+  Tools --> Bridge["ActiveGameBridge"]
+  Bridge -->|highlights| Board["Chessboard"]
+  Tools -->|post_chat_message| Inbox["Chat inbox"]
+  Inbox --> Drawer
 ```

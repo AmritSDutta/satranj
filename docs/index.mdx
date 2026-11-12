@@ -7,7 +7,7 @@ description: Welcome to Satranj — a premium, client-side chess web application
 
 **Satranj** is a premium, client-side serverless chess web application built in React and Vite. It is styled with modern dark dashboard aesthetics, glassmorphism panels, and glowing neon accents.
 
-It features localized player-vs-player matches, customizable chess clocks, synthesized Web Audio API sound effects, and an offline **Stockfish AI** engine running directly inside the browser using WebAssembly.
+It features localized player-vs-player matches, customizable chess clocks, synthesized Web Audio API sound effects, an offline **Stockfish AI** engine running directly inside the browser using WebAssembly, and an optional **LLM-powered AI Coach** wired through a browser-side **WebMCP** tool registry.
 
 ## Quick Start
 
@@ -31,12 +31,16 @@ Open [http://localhost:5173](http://localhost:5173) in your browser to start pla
 - **Difficulty Slider**: Adjust Stockfish search depth from level 2 to 15
 - **Live Evaluation Bar**: Real-time centipawn or mate advantage display
 - **Move Log History**: Full algebraic notation with position navigation/review
-- **Chess Clock**: Turn-synced timers supporting Bullet (1+0), Blitz (3+2, 5+0), Rapid (10+0), and Classical (30+0)
+- **Chess Clock**: Turn-synced timers with Rapid (10+0) and Classical (30+0) presets plus a no-clock casual option
 - **Captured Material Tracking**: Visual piece display with point difference
 - **Synthesized Audio Effects**: Zero-latency Web Audio API sounds for moves, captures, checks, and game-over
 - **Board Themes**: Emerald Green, Classic Wood, Carbon Fiber, and Midnight Neon
 - **Flip Board**: Instantly swap board perspective between White and Black
 - **Game Analysis**: Post-game Stockfish analysis with move classification badges
+- **AI Coach**: Slide-out chat coach with pluggable LLM providers (Gemini, OpenAI, Ollama) and board highlights
+- **WebMCP Integration**: Exposes game state, legal moves, engine analysis, and board highlighting as MCP tools for visiting agents
+- **Saved Games**: Auto-saves the active match locally and offers a "Resume Saved Game" prompt
+- **Light / Dark Modes**: Toggle between a dark dashboard and a light theme
 
 ## Tech Stack
 
@@ -47,6 +51,8 @@ Open [http://localhost:5173](http://localhost:5173) in your browser to start pla
 | Board UI | react-chessboard |
 | AI Engine | Stockfish 10 (WebAssembly via Web Worker) |
 | Audio | Web Audio API (synthesized) |
+| AI Coach | Gemini / OpenAI-compatible providers via WebMCP tools |
+| Credential Vault | Web Crypto API (AES-GCM-256 + IndexedDB) |
 | Icons | Lucide React |
 | Observability | Grafana Faro |
 | Styling | CSS with design tokens & variables |

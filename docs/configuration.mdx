@@ -50,6 +50,55 @@ export default defineConfig({
 | `faroUploader.appName` | `satranj.amritai.org` | Matches Faro app metadata |
 | `faroUploader.gzipContents` | `true` | Compresses source maps before upload |
 
+## Dev Server Plugins (WebMCP & Proxy)
+
+`vite.config.js` registers a local plugin (`viteWebMcpPlugin`) that mounts four middleware routes used only in development (`import.meta.env.DEV`):
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/mcp/sse` | GET | SSE stream pushing `chat_message` and `highlight_board` events to the browser |
+| `/api/mcp/message` | POST | JSON-RPC 2.0 dispatcher for external MCP clients |
+| `/api/mcp/state` | GET / POST | Browser→host state sync for external tools |
+| `/api/proxy` | POST | Same-origin proxy for AI provider hosts |
+
+The `/api/proxy` route enforces a **host allow-list**; requests to other hosts return `403`:
+
+```text
+generativelanguage.googleapis.com · api.openai.com · openai.com
+ollama.com · api.mistral.ai · router.requesty.ai
+```
+
+`localhost` / `127.0.0.1` targets are also allowed for local Ollama. See [WebMCP Integration](/webmcp) for the full endpoint behavior.
+
+## Content-Security-Policy
+
+`index.html` sets a CSP `<meta>` tag. The `connect-src` directive must list every origin the app may contact, so adding a provider means extending it:
+
+```text
+default-src 'self';
+connect-src 'self'
+  https://faro-api-prod-ap-south-1.grafana.net
+  https://generativelanguage.googleapis.com
+  https://api.openai.com
+  https://ollama.com
+  https://api.mistral.ai
+  https://router.requesty.ai
+  http://localhost:* ws://localhost:*;
+```
+
+The global security headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) and the `Access-Control-Allow-*` headers for `/api/*` are defined in `public/_headers` for hosts that support it.
+
+## Coach Provider Credentials
+
+The AI Coach stores provider settings in the browser, encrypted with AES-GCM-256 (see [AI Coach](/coach)). They are **not** environment variables and cannot be supplied at build time.
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Provider | `gemini` | `gemini` \| `openai` \| `ollama` |
+| Gemini model | `gemini-2.5-flash` | Editable in the drawer |
+| OpenAI model | `gpt-4o-mini` | Editable in the drawer |
+| Ollama model | `llama3.2` | Endpoint defaults to `http://localhost:11434` |
+
 ## Grafana Faro Integration
 
 Satranj integrates **Grafana Faro** for Real User Monitoring (RUM), error tracking, and performance telemetry.

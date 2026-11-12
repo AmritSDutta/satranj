@@ -19,6 +19,10 @@ The main game container and orchestrator. Manages all game state, handles move e
 - **UI mode switching**: Setup screen vs. active game interface
 - **Game controls**: Pause/resume, undo, flip board, restart, return to setup
 - **Game over detection**: Checkmate, stalemate, timeout, draw conditions
+- **WebMCP bridge**: Registers the `ActiveGameBridge` for tools and the coach
+- **Board annotations**: Renders `customSquareStyles` and `customArrows`
+- **Persistence**: Auto-saves the active game and offers resume from the setup screen
+- **Theme mode**: Toggles dark/light via `data-theme`
 
 ### Props
 
@@ -31,6 +35,7 @@ None — Dashboard is the root component rendered by `<App />`.
 | `executeMove(from, to, san)` | Validates and applies a move, updates all state |
 | `makeAIMove(uciMove)` | Parses UCI notation and calls `executeMove` |
 | `handleAnalyzeGame()` | Runs Stockfish analysis across all game positions |
+| `handleResumeGame(saved)` | Restores a saved game, paused, from `localStorage` |
 | `selectMoveIndex(idx)` | Navigates to a specific position in move history |
 | `handleUndo()` | Reverts the last move pair |
 | `resetGame()` | Resets to initial position with current settings |
@@ -68,6 +73,9 @@ Turn-synced countdown timers for both players.
 | `timePreset` | string | Preset identifier (e.g., `"10+0"`) |
 | `gameHistoryLength` | number | Move count (for increment detection) |
 | `resetTrigger` | number | Increment to force clock reset |
+| `initialWhiteTime` | number | Optional seed for White's clock (resume) |
+| `initialBlackTime` | number | Optional seed for Black's clock (resume) |
+| `onTimeUpdate` | function | Reports `{ whiteTime, blackTime }` for persistence |
 
 ### Time Presets
 
@@ -211,4 +219,34 @@ Post-game analysis display with interactive graph and move review.
 - **Summary tab**: Overview statistics including move quality breakdown counts and player accuracy percentages
 - **Evaluation graph**: Interactive SVG line chart showing centipawn/mate score progression across the game with clickable points
 - **Key moments tab**: Filtered list of inaccuracies, mistakes, and blunders with before/after evaluations and direct "Review" jump buttons
-- **Direct navigation**: Click any moment or chart point to jump to that board position
+- **Direct navigation**: Click any moment or chart point to jump to that board position
+
+---
+
+## CoachDrawer
+
+**File:** `src/components/CoachDrawer.jsx`
+
+A glassmorphic slide-out chat drawer that hosts the AI Coach. It renders the message stream, quick-action chips, provider settings, and clickable candidate-move pills.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `isOpen` | boolean | Controls drawer visibility |
+| `onClose` | function | Close handler |
+| `activeGameBridge` | object | Bridge exposing game state and board highlighting |
+| `onClearHighlights` | function | Clears all square tints and arrows |
+
+### Behavior
+
+- **Encrypted settings**: Loads/saves provider, API key, model, and endpoint via `cryptoStorage` on mount and on save.
+- **Message stream**: Renders user and assistant bubbles, an assistant welcome message, and live messages pushed from WebMCP.
+- **Subscriptions**: Subscribes to `subscribeChatMessages` on mount and replays `drainChatMessages()` so messages sent while closed are not lost.
+- **Agent loop**: Sends the conversation plus tool declarations to the provider and runs up to **4 tool-calling turns** (see [AI Coach](/coach)).
+- **Suggested moves**: Clicking a pill calls `activeGameBridge.highlightBoard` to preview the move's `from`/`to` squares and arrow.
+- **Quick actions**: *Suggest Move*, *Evaluate Position*, and *Check Threats* send canned prompts.
+
+### Rendering
+
+The drawer only mounts its DOM when `isOpen` is true (`if (!isOpen) return null`), so no background traffic occurs while it is closed.
