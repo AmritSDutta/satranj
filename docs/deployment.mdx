@@ -93,7 +93,7 @@ The AI Coach sends provider requests through the same-origin `/api/proxy` endpoi
 
 - Handles `OPTIONS` preflight with `Access-Control-Allow-*` headers.
 - Validates the `targetUrl` against the same host allow-list as the dev middleware and rejects anything else with `403`.
-- Forwards only `Content-Type` and `Authorization` headers, then streams the upstream response back.
+- Forwards `Content-Type`, `Authorization`, `HTTP-Referer`, and `X-Title` headers, with a 25-second upstream timeout, then streams the response back.
 
 ```javascript
 // functions/api/proxy.js

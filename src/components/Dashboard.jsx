@@ -40,6 +40,38 @@ const boardThemes = {
   }
 };
 
+function normalizeArrows(arrows) {
+  if (!Array.isArray(arrows)) return [];
+  const validSquare = (sq) => typeof sq === 'string' && /^[a-h][1-8]$/i.test(sq.trim());
+  const normalized = [];
+
+  for (const a of arrows) {
+    if (!a) continue;
+    if (Array.isArray(a)) {
+      const [start, end, color] = a;
+      if (validSquare(start) && validSquare(end)) {
+        normalized.push({
+          startSquare: start.trim().toLowerCase(),
+          endSquare: end.trim().toLowerCase(),
+          color: typeof color === 'string' && color ? color : '#ffaa00'
+        });
+      }
+    } else if (typeof a === 'object') {
+      const start = a.startSquare || a.from;
+      const end = a.endSquare || a.to;
+      if (validSquare(start) && validSquare(end)) {
+        normalized.push({
+          startSquare: start.trim().toLowerCase(),
+          endSquare: end.trim().toLowerCase(),
+          color: typeof a.color === 'string' && a.color ? a.color : '#ffaa00'
+        });
+      }
+    }
+  }
+
+  return normalized;
+}
+
 export default function Dashboard() {
   // Game state
   const [game, setGame] = useState(() => new Chess());
@@ -151,13 +183,13 @@ export default function Dashboard() {
   useEffect(() => {
     const bridge = {
       getGameState: () => ({
-        fen: game.fen(),
-        turn: game.turn(),
-        turnName: game.turn() === 'w' ? 'White' : 'Black',
-        history: history.map((h) => (typeof h === 'string' ? h : h.san)),
-        moveCount: history.length,
-        isGameOver: game.isGameOver() || isGameOver,
-        inCheck: game.inCheck(),
+        fen: game ? game.fen() : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        turn: game ? game.turn() : 'w',
+        turnName: (game ? game.turn() : 'w') === 'w' ? 'White' : 'Black',
+        history: Array.isArray(history) ? history.map((h) => (typeof h === 'string' ? h : h?.san || '')) : [],
+        moveCount: Array.isArray(history) ? history.length : 0,
+        isGameOver: Boolean(game && game.isGameOver()) || Boolean(isGameOver),
+        inCheck: Boolean(game && game.inCheck()),
         gameMode,
         aiDifficulty,
         timePreset,
@@ -166,13 +198,13 @@ export default function Dashboard() {
       }),
       getLegalMoves: (square) => {
         try {
-          return game.moves({ verbose: true, square });
+          return game ? game.moves({ verbose: true, square }) : [];
         } catch {
           return [];
         }
       },
       getPositionAnalysis: async (depth = 8) => {
-        if (!stockfishRef.current) return null;
+        if (!stockfishRef.current || !game) return null;
         try {
           const raw = await stockfishRef.current.evaluatePositionPromise(game.fen(), depth);
           if (!raw) return null;
@@ -217,22 +249,24 @@ export default function Dashboard() {
       postChatMessage: (payload) => {
         enqueueChatMessage(payload);
         if (payload.highlightSquares || payload.arrows) {
+          const safeArrows = normalizeArrows(payload.arrows);
           if (payload.clearPrevious) {
             setCustomSquareStyles(payload.highlightSquares || {});
-            setCustomArrows(payload.arrows || []);
+            setCustomArrows(safeArrows);
           } else {
             setCustomSquareStyles((prev) => ({ ...prev, ...(payload.highlightSquares || {}) }));
-            setCustomArrows((prev) => [...prev, ...(payload.arrows || [])]);
+            setCustomArrows((prev) => [...prev, ...safeArrows]);
           }
         }
       },
       highlightBoard: ({ highlightSquares, arrows, clearPrevious }) => {
+        const safeArrows = normalizeArrows(arrows);
         if (clearPrevious) {
           setCustomSquareStyles(highlightSquares || {});
-          setCustomArrows(arrows || []);
+          setCustomArrows(safeArrows);
         } else {
           setCustomSquareStyles((prev) => ({ ...prev, ...(highlightSquares || {}) }));
-          setCustomArrows((prev) => [...prev, ...(arrows || [])]);
+          setCustomArrows((prev) => [...prev, ...safeArrows]);
         }
       }
     };
@@ -274,13 +308,13 @@ export default function Dashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fen: game.fen(),
-          turn: game.turn(),
-          turnName: game.turn() === 'w' ? 'White' : 'Black',
-          history: history.map((h) => (typeof h === 'string' ? h : h.san)),
-          moveCount: history.length,
-          isGameOver: game.isGameOver() || isGameOver,
-          inCheck: game.inCheck(),
+          fen: game ? game.fen() : '',
+          turn: game ? game.turn() : 'w',
+          turnName: (game ? game.turn() : 'w') === 'w' ? 'White' : 'Black',
+          history: Array.isArray(history) ? history.map((h) => (typeof h === 'string' ? h : h?.san || '')) : [],
+          moveCount: Array.isArray(history) ? history.length : 0,
+          isGameOver: Boolean(game && game.isGameOver()) || Boolean(isGameOver),
+          inCheck: Boolean(game && game.inCheck()),
           gameMode,
           aiDifficulty,
           timePreset,
@@ -504,13 +538,13 @@ export default function Dashboard() {
   };
 
   const handleResumeGame = (saved) => {
-    if (!saved) return;
+    if (!saved || typeof saved.fen !== 'string') return;
     try {
       const restored = new Chess(saved.fen);
       setGame(restored);
       setFen(saved.fen);
-      setHistory(saved.history || []);
-      setHistoryFens(saved.historyFens || [saved.fen]);
+      setHistory(Array.isArray(saved.history) ? saved.history : []);
+      setHistoryFens(Array.isArray(saved.historyFens) && saved.historyFens.length > 0 ? saved.historyFens : [saved.fen]);
       setActiveMoveIndex(saved.activeMoveIndex ?? (saved.history ? saved.history.length : 0));
       setGameMode(saved.gameMode || 'ai');
       setUserColor(saved.userColor || 'w');
@@ -1179,7 +1213,7 @@ export default function Dashboard() {
                     animationDurationInMs: 200,
                     onPieceDrop: onPieceDrop,
                     squareStyles: getCustomSquareStyles(),
-                    arrows: customArrows
+                    arrows: normalizeArrows(customArrows)
                   }}
                 />
               </div>

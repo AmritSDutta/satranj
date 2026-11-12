@@ -37,12 +37,16 @@ Coach messages are dispatched through a provider abstraction so the drawer is de
 | Provider | `id` | Default model | Transport |
 |----------|------|---------------|-----------|
 | Google Gemini | `gemini` | `gemini-2.5-flash` | `generateContent` REST with native function calling |
+| OpenRouter | `openrouter` | `openrouter/free` | OpenAI-compatible `/chat/completions` with reasoning mode |
+| Nebius Token Factory | `nebius` | `MiniMaxAI/MiniMax-M3.1-Flash` | OpenAI-compatible endpoint on `https://api.tokenfactory.nebius.com/v1` |
 | OpenAI | `openai` | `gpt-4o-mini` | OpenAI-compatible `/v1/chat/completions` |
 | Ollama (local) | `ollama` | `llama3.2` | OpenAI-compatible endpoint on `http://localhost:11434` |
 
-`OpenAICompatibleProvider` is the shared base for any OpenAI-style API and normalizes the `endpoint` to end in `/v1/chat/completions`. `GeminiProvider` translates the message array into Gemini `contents`/`functionCall`/`functionResponse` parts and maps tool declarations to `functionDeclarations`.
+`OpenAICompatibleProvider` is the shared base for OpenAI-style APIs (OpenRouter, Nebius, OpenAI, and Ollama). It normalizes endpoints safely (avoiding duplicate `/v1/v1` paths), attaches `reasoning: { enabled: true }` and attribution headers (`HTTP-Referer`, `X-Title`) for OpenRouter, and preserves `reasoning_details` in assistant turns across subsequent prompts. `GeminiProvider` translates the message array into Gemini `contents`/`functionCall`/`functionResponse` parts and preserves candidate `thought_signature` parts.
 
-Both providers prefer to POST through the same-origin `/api/proxy` endpoint when available (dev middleware or the Cloudflare Pages Function) and transparently fall back to a direct `fetch` when the proxy is absent.
+Both providers route POST requests through the same-origin `/api/proxy` endpoint when available and transparently fall back to direct browser `fetch` if the proxy times out or returns a 5xx gateway error.
+
+Board arrows emitted by tools (`[from, to, color]`, `[from, to]`, or `{ startSquare, endSquare, color }`) are universally normalized by `Dashboard.jsx` to match `react-chessboard` v5's internal `<Arrows />` schema, preventing runtime `match` errors.
 
 ## Provider contract
 
@@ -92,10 +96,10 @@ All keys are namespaced with the `satranj_` prefix:
 
 | Key | Contents |
 |-----|----------|
-| `satranj_active_provider` | Selected provider id (`gemini` \| `openai` \| `ollama`) |
+| `satranj_active_provider` | Selected provider id (`gemini` \| `openrouter` \| `nebius` \| `openai` \| `ollama`) |
 | `satranj_<provider>_api_key` | Encrypted API key for that provider |
 | `satranj_<provider>_model` | Model name |
-| `satranj_<provider>_endpoint` | Custom endpoint (Ollama) |
+| `satranj_<provider>_endpoint` | Custom endpoint (Ollama, Nebius, OpenRouter) |
 
 Exposed helpers: `setItemEncrypted`, `getItemEncrypted`, `encryptString`, `decryptString`, `removeItem`.
 

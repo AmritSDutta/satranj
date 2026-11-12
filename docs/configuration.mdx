@@ -66,6 +66,7 @@ The `/api/proxy` route enforces a **host allow-list**; requests to other hosts r
 ```text
 generativelanguage.googleapis.com · api.openai.com · openai.com
 ollama.com · api.mistral.ai · router.requesty.ai
+api.tokenfactory.nebius.com · openrouter.ai
 ```
 
 `localhost` / `127.0.0.1` targets are also allowed for local Ollama. See [WebMCP Integration](/webmcp) for the full endpoint behavior.
@@ -78,11 +79,14 @@ ollama.com · api.mistral.ai · router.requesty.ai
 default-src 'self';
 connect-src 'self'
   https://faro-api-prod-ap-south-1.grafana.net
+  https://faro-collector-prod-ap-south-1.grafana.net
   https://generativelanguage.googleapis.com
   https://api.openai.com
   https://ollama.com
   https://api.mistral.ai
   https://router.requesty.ai
+  https://api.tokenfactory.nebius.com
+  https://openrouter.ai
   http://localhost:* ws://localhost:*;
 ```
 
@@ -94,8 +98,10 @@ The AI Coach stores provider settings in the browser, encrypted with AES-GCM-256
 
 | Setting | Default | Notes |
 |---------|---------|-------|
-| Provider | `gemini` | `gemini` \| `openai` \| `ollama` |
+| Provider | `gemini` | `gemini` \| `openrouter` \| `nebius` \| `openai` \| `ollama` |
 | Gemini model | `gemini-2.5-flash` | Editable in the drawer |
+| OpenRouter model | `openrouter/free` | Reasoning enabled; endpoint `https://openrouter.ai/api/v1` |
+| Nebius model | `MiniMaxAI/MiniMax-M3.1-Flash` | Endpoint `https://api.tokenfactory.nebius.com/v1` |
 | OpenAI model | `gpt-4o-mini` | Editable in the drawer |
 | Ollama model | `llama3.2` | Endpoint defaults to `http://localhost:11434` |
 

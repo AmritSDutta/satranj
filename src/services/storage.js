@@ -35,9 +35,13 @@ export function loadActiveGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || !data.fen) return null;
+    if (!data || typeof data.fen !== 'string' || !data.fen.trim()) {
+      clearActiveGame();
+      return null;
+    }
     return data;
   } catch {
+    clearActiveGame();
     return null;
   }
 }

@@ -257,7 +257,7 @@ export default function CoachDrawer({
           [match.from]: 'rgba(16, 185, 129, 0.4)',
           [match.to]: 'rgba(16, 185, 129, 0.7)'
         },
-        arrows: [[match.from, match.to, 'rgb(16, 185, 129)']],
+        arrows: [{ startSquare: match.from, endSquare: match.to, color: 'rgb(16, 185, 129)' }],
         clearPrevious: true
       });
     }

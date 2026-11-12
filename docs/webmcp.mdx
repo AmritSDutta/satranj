@@ -97,8 +97,11 @@ Both the dev middleware and the production Cloudflare Pages Function (`functions
 ```text
 generativelanguage.googleapis.com · api.openai.com · openai.com
 ollama.com · api.mistral.ai · router.requesty.ai
+api.tokenfactory.nebius.com · openrouter.ai
 ```
 
-Requests to any other host are rejected with `403`. Local `localhost` / `127.0.0.1` targets are additionally permitted by the dev proxy for Ollama. The Cloudflare function requires `https:`; the dev proxy also accepts `http:` for local hosts.
+Requests to any other host are rejected with `403`. Local `localhost` / `127.0.0.1` targets are additionally permitted by the dev proxy for Ollama. The Cloudflare function requires `https:`; the dev proxy also accepts `http:` for local hosts. Headers `HTTP-Referer` and `X-Title` are forwarded for OpenRouter attribution.
+
+Board arrows provided to `post_chat_message` or `highlight_board` can be formatted as tuples (`[from, to, color]`) or objects (`{ startSquare, endSquare, color }`). They are normalized transparently before rendering on the chessboard to prevent arrow coordinate syntax errors.
 
 See [Configuration](/configuration) for the Vite plugin surface and [Deployment](/deployment) for the Pages Function.

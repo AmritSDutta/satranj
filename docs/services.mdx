@@ -256,9 +256,9 @@ A pluggable provider layer used by the AI Coach.
 
 | File | Purpose |
 |------|---------|
-| `types.js` | JSDoc typedefs (`ILlmProvider`, `ProviderChatMessage`, `ProviderToolDecl`, `ProviderChatResult`) and `SUPPORTED_PROVIDERS` |
-| `providerFactory.js` | `createLlmProvider(options)` — returns a provider instance by id |
-| `openAICompatibleProvider.js` | Shared base for OpenAI / Ollama / OpenAI-style APIs |
-| `geminiProvider.js` | Google Gemini provider with native function calling |
+| `types.js` | JSDoc typedefs (`ILlmProvider`, `ProviderChatMessage`, `ProviderToolDecl`, `ProviderChatResult`), `SUPPORTED_PROVIDERS`, and HTML-safe error parser |
+| `providerFactory.js` | `createLlmProvider(options)` — returns a provider instance by id (`gemini`, `openrouter`, `nebius`, `openai`, `ollama`) |
+| `openAICompatibleProvider.js` | Shared base for OpenRouter, Nebius, OpenAI, and Ollama with reasoning persistence |
+| `geminiProvider.js` | Google Gemini provider with native function calling and thought signature preservation |
 
-Both providers expose `generateText` and `chat`, prefer to route requests through the same-origin `/api/proxy`, and fall back to a direct `fetch`. See [AI Coach](/coach) for the full contract and agent loop.
+All providers expose `generateText` and `chat`, route requests through the same-origin `/api/proxy` (forwarding `Authorization`, `HTTP-Referer`, and `X-Title`), and fall back to a direct `fetch` on 5xx errors or timeouts. See [AI Coach](/coach) for the full contract and agent loop.
