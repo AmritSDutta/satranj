@@ -73,10 +73,12 @@ api.tokenfactory.nebius.com · openrouter.ai
 
 ## Content-Security-Policy
 
-`index.html` sets a CSP `<meta>` tag. The `connect-src` directive must list every origin the app may contact, so adding a provider means extending it:
+`index.html` sets a CSP `<meta>` tag. The `connect-src` directive must list every AI provider origin the app may contact, so adding a provider means extending it; `script-src` allows the Stockfish CDN (`cdnjs.cloudflare.com`) and Cloudflare Insights.
 
 ```text
 default-src 'self';
+script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:
+  https://cdnjs.cloudflare.com https://static.cloudflareinsights.com;
 connect-src 'self'
   https://faro-api-prod-ap-south-1.grafana.net
   https://faro-collector-prod-ap-south-1.grafana.net

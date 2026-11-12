@@ -59,6 +59,19 @@ All providers expose:
 
 `chat` returns a `ProviderChatResult` of `{ content, toolCalls, assistantMessage }`, where each `toolCall` is `{ id, name, args }` and `assistantMessage` is the raw assistant turn to append back into the conversation when feeding tool results.
 
+## Error handling
+
+Provider failures are normalized by `parseApiError(response, providerName)` in `src/services/providers/types.js` before they surface in the drawer (which additionally strips stray HTML):
+
+| Status | User-facing message |
+|--------|---------------------|
+| `524` | `<Provider> timed out (Error 524)` — Cloudflare or the AI host took too long |
+| `504` | `<Provider> gateway timeout (Error 504)` |
+| `502` / `503` | `<Provider> service temporarily unavailable` |
+| `429` | `<Provider> rate limit exceeded` — wait or check quota |
+| `401` / `403` | `<Provider> authentication failed` — verify the API key in Coach Settings |
+| other | JSON `error` / `message` when present, otherwise a cleaned HTML title/text snippet |
+
 ## Tool-calling agent loop
 
 When you send a message, `handleSendMessage` runs a bounded agent loop (up to **4 turns**):

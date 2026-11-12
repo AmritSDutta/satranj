@@ -238,11 +238,16 @@ Registers Satranj's game tools on the browser Model Context Protocol surface and
 | Export | Purpose |
 |--------|---------|
 | `satranjWebMcpTools` | The five tool definitions (`post_chat_message`, `get_game_state`, `get_legal_moves`, `get_position_analysis`, `highlight_board`) |
-| `initWebMcp()` | Patches `window` / `document` / `navigator` `modelContext` with the tools and `listTools`/`getTools` accessors |
+| `initWebMcp()` | Patches `window` / `document` / `navigator` `modelContext` with the tools and `listTools`/`getTools` accessors, then calls `registerTool` on each target |
+| `ensureWebMcpInitialized()` | Retries `initWebMcp()` up to 5 times (800 ms apart) until a `modelContext` target that exposes `registerTool` is found |
+| `registerWebMcpTool(tool)` | Registers a single tool on every `modelContext` target, de-duplicating by tool name |
+| `getModelContextTargets()` | Returns the distinct `document` / `navigator` / `window` `modelContext` objects that expose `registerTool` |
 | `setActiveGameBridge(bridge)` | Connects the React dashboard state to the tool executor |
 | `enqueueChatMessage(msg)` | Appends a message to the in-memory inbox (capped at 50) and notifies subscribers |
 | `subscribeChatMessages(cb)` | Registers a listener; returns an unsubscribe function |
 | `drainChatMessages()` | Returns a snapshot of the inbox |
+
+Each tool also exposes `parameters`, `schema`, and `handler` aliases of its schema/executor for Model Context API and WebMCP inspector compatibility. On import the module auto-runs `initWebMcp()` / `ensureWebMcpInitialized()`, publishes `window.__webMcpTools`, and re-initializes on the `modelContextReady` / `modelcontextready` window events.
 
 See [WebMCP Integration](/webmcp) for the tool schemas and transports.
 
@@ -256,7 +261,7 @@ A pluggable provider layer used by the AI Coach.
 
 | File | Purpose |
 |------|---------|
-| `types.js` | JSDoc typedefs (`ILlmProvider`, `ProviderChatMessage`, `ProviderToolDecl`, `ProviderChatResult`), `SUPPORTED_PROVIDERS`, and HTML-safe error parser |
+| `types.js` | JSDoc typedefs (`ILlmProvider`, `ProviderChatMessage`, `ProviderToolDecl`, `ProviderChatResult`), `SUPPORTED_PROVIDERS`, and the `parseApiError` HTML-safe error parser |
 | `providerFactory.js` | `createLlmProvider(options)` — returns a provider instance by id (`gemini`, `openrouter`, `nebius`, `openai`, `ollama`) |
 | `openAICompatibleProvider.js` | Shared base for OpenRouter, Nebius, OpenAI, and Ollama with reasoning persistence |
 | `geminiProvider.js` | Google Gemini provider with native function calling and thought signature preservation |

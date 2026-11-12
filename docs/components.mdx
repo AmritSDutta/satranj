@@ -21,6 +21,7 @@ The main game container and orchestrator. Manages all game state, handles move e
 - **Game over detection**: Checkmate, stalemate, timeout, draw conditions
 - **WebMCP bridge**: Registers the `ActiveGameBridge` for tools and the coach
 - **Board annotations**: Renders `customSquareStyles` and `customArrows`
+- **Arrow normalization**: `normalizeArrows()` coerces tool-supplied arrows — `[from, to, color]` tuples or `{ startSquare, endSquare, color }` objects — into `react-chessboard`'s schema, validating squares so malformed coordinates never crash rendering
 - **Persistence**: Auto-saves the active game and offers resume from the setup screen
 - **Theme mode**: Toggles dark/light via `data-theme`
 
@@ -241,6 +242,7 @@ A glassmorphic slide-out chat drawer that hosts the AI Coach. It renders the mes
 ### Behavior
 
 - **Encrypted settings**: Loads/saves provider, API key, model, and endpoint via `cryptoStorage` on mount and on save.
+- **Provider settings**: A dropdown for Google Gemini, OpenRouter, Nebius, OpenAI, and Ollama, with an endpoint field for the providers that need one and a saved/not-set indicator plus a Clear action for the current key.
 - **Message stream**: Renders user and assistant bubbles, an assistant welcome message, and live messages pushed from WebMCP.
 - **Subscriptions**: Subscribes to `subscribeChatMessages` on mount and replays `drainChatMessages()` so messages sent while closed are not lost.
 - **Agent loop**: Sends the conversation plus tool declarations to the provider and runs up to **4 tool-calling turns** (see [AI Coach](/coach)).

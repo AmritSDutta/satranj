@@ -6,15 +6,15 @@
 
 - **AI Grandmaster Tactical Coach (WebMCP)**: Slide-out coaching drawer capable of answering tactical questions, analyzing positions with Stockfish, and recommending candidate moves with interactive board tints and directional arrows.
 - **WebMCP & SSE Bridge**: Standardized browser tools registered on `window.modelContext` and `/api/mcp/sse` endpoint for external AI agent integration.
-- **Multi-Provider LLM Engine**: Bring your own API key for Google Gemini, OpenAI, Ollama, Mistral, or Requesty, with CORS-free proxy relay at the Cloudflare edge.
+- **Multi-Provider LLM Engine**: Bring your own API key for Google Gemini, OpenRouter (reasoning-enabled), Nebius Token Factory, OpenAI, or a local Ollama instance, with a CORS-free proxy relay at the Cloudflare edge.
 - **Encrypted Credential Vault**: Browser-side AES-GCM-256 encryption via native Web Crypto API with non-extractable keys in IndexedDB (`satranj_` namespace).
-- **Game State Auto-Save & Resume**: Active matches are automatically saved to local storage on moves, unloads, or pauses, and can be resumed with clocks preserved in a paused state. Cleared on checkmate, draw, or fresh game.
+- **Game State Auto-Save & Resume**: Active matches are automatically saved to local storage on every move and on page unload, and can be resumed with clocks preserved in a paused state. Cleared on checkmate, draw, or fresh game.
 - **Post-Game Match Analysis**: Complete engine evaluation with White and Black accuracy scores, an interactive SVG advantage chart, and move classifications (Best, Excellent, Inaccuracy, Mistake, Blunder).
 - **Dual Game Modes**: Play local hotseat PVP or play against Stockfish AI.
 - **Difficulty Slider**: Adjust Stockfish depth from level 2 to 15.
 - **Live Evaluation Bar**: Displays real-time centipawns or mate advantages from the engine.
 - **Move Log History**: Tracks full algebraic move notations and supports navigating past moves to review the board.
-- **Chess Clock**: Turn-synced clocks supporting Bullet (1+0), Blitz (3+2, 5+0), Rapid (10+0), and Classical (30+0). Timers show tenth-of-a-second precision under 10 seconds.
+- **Chess Clock**: Turn-synced clocks with Rapid (10+0) and Classical (30+0) presets plus a no-clock casual option. Timers show tenth-of-a-second precision under 10 seconds.
 - **Captured Material Tracking**: Visualizes captured pieces and lists the point difference.
 - **Synthesized Audio Effects**: Uses the Web Audio API to play responsive sounds for moves, captures, checks, and game-over outcomes with zero latency.
 - **Visual Board Customization**: Offers beautiful board themes (Emerald Green, Classic Wood, Carbon Fiber, and Midnight Neon).

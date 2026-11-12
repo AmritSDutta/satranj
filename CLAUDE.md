@@ -11,10 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Satranj is a client-side chess web application built with React and Vite. It runs entirely in the browser with no backend server. The application features:
+Satranj is a client-side chess web application built with React and Vite. It runs entirely in the browser, using an optional Cloudflare Pages Function purely as a CORS-free proxy for LLM provider requests. The application features:
 
 - **Local PVP mode** and **Stockfish AI** opponent
-- **Chess clock** with multiple time controls (Bullet, Blitz, Rapid, Classical)
+- **AI Coach** with pluggable LLM providers (Gemini, OpenRouter, Nebius, OpenAI, Ollama) driven by **WebMCP** browser tools
+- **Saved-game persistence** with auto-save and "Resume Saved Game"
+- **Chess clock** with presets (Rapid 10+0, Classical 30+0, or no clock)
 - **Move history** with position navigation/review
 - **Evaluation bar** showing real-time engine analysis
 - **Audio effects** using Web Audio API
@@ -47,6 +49,7 @@ npm run preview
 satranj/
 ├── docs/                     # Documentation site (docs7)
 │   ├── architecture.mdx
+│   ├── coach.mdx             # AI Coach architecture & provider contract
 │   ├── components.mdx
 │   ├── configuration.mdx
 │   ├── custom.css
@@ -56,7 +59,8 @@ satranj/
 │   ├── index.mdx
 │   ├── installation.mdx
 │   ├── license.mdx
-│   └── services.mdx
+│   ├── services.mdx
+│   └── webmcp.mdx            # WebMCP registry, dev bridge, provider proxy
 ├── functions/                # Cloudflare Pages Functions
 │   └── api/
 │       └── proxy.js          # Edge proxy relay for LLM provider API requests
@@ -83,7 +87,7 @@ satranj/
 │   │   ├── stockfish.js          # Web Worker wrapper for Stockfish UCI engine
 │   │   ├── storage.js            # In-progress game auto-save & resume (localStorage)
 │   │   ├── webMcpService.js      # WebMCP server registering tools on window.modelContext
-│   │   └── providers/            # Multi-provider LLM engine (Gemini, OpenAI, Ollama)
+│   │   └── providers/            # Multi-provider LLM engine (Gemini, OpenRouter, Nebius, OpenAI, Ollama)
 │   │       ├── types.js          # Provider interfaces & tool calling types
 │   │       ├── openAICompatibleProvider.js # Base class for OpenAI-compatible APIs
 │   │       ├── geminiProvider.js # Google Gemini provider with native function calling
@@ -173,9 +177,10 @@ satranj/
     - `get_position_analysis`: Queries Stockfish engine for evaluation score, best move, and principal variation (PV)
     - `highlight_board`: Paints threat squares and directional arrows on the board
   - Manages in-memory message inbox and subscriber stream
+  - `ensureWebMcpInitialized()` retries registration (5 attempts, 800 ms apart) until a `modelContext` target exposing `registerTool` appears; each tool also exposes `parameters` / `schema` / `handler` aliases for API-variant compatibility
 
 - **storage.js** - Game persistence
-  - Auto-saves running game snapshots on every move, pause, or `beforeunload`
+  - Auto-saves running game snapshots on every move and on `beforeunload`
   - Rehydrates game state on setup screen via "Resume Saved Game" card in a paused state
   - Automatically disposes of saved games on checkmate, draw, stalemate, or clock timeout
 
@@ -185,9 +190,10 @@ satranj/
   - All stored settings and API keys are namespaced with the `satranj_` prefix
 
 - **providers/** - Multi-provider LLM engine
-  - Unified `ILlmProvider` contract for Google Gemini, OpenAI, Ollama, Mistral, and Requesty
+  - Unified `ILlmProvider` contract for Google Gemini, OpenRouter, Nebius, OpenAI, and Ollama
+  - OpenRouter requests reasoning (`reasoning: { enabled: true }`) and preserves `reasoning_details`; Gemini preserves `thought_signature` parts across turns
   - Client-side function calling mapping to WebMCP tools
-  - Proxy relay routing via `/api/proxy` for CORS bypass
+  - Proxy relay routing via `/api/proxy` for CORS bypass; failures normalized by `parseApiError` (524/504/502/503/429/401/403)
 
 ### Cloudflare Pages & Edge Proxy
 
@@ -226,6 +232,8 @@ satranj/
 - **Stockfish Turn Handling**: Engine evaluations are relative to active side; convert to absolute (positive=White) by checking turn
 - **Review Mode Blocking**: Drag moves disabled when `activeMoveIndex !== historyFens.length - 1`
 - **CORS Workaround**: Stockfish loaded via `Blob` + `importScripts()` due to CDN restrictions
+- **Arrow Normalization**: `normalizeArrows()` coerces tool-supplied arrows (`[from, to, color]` tuples or `{ startSquare, endSquare, color }` objects) into `react-chessboard`'s schema, guarding against malformed coordinates
+- **WebMCP Init Retry**: `ensureWebMcpInitialized()` re-runs registration until a `modelContext` target is available, covering late-injected polyfills
 
 ## Styling
 

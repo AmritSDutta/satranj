@@ -47,6 +47,16 @@ Five tools are registered:
 | `get_position_analysis` | Yes | `depth` (2–15, default 8) | Runs Stockfish and returns formatted score, best move, and PV |
 | `highlight_board` | No | `highlightSquares`, `arrows`, `clearPrevious` | Paints or clears board cues without a chat message |
 
+## Registration robustness
+
+The registry tolerates browsers and extensions that expose `modelContext` at different times or with slight API variations:
+
+- `initWebMcp()` patches every available `modelContext` target (`document`, `navigator`, `window`), exposing `listTools` / `getTools` and pushing the five tools into each.
+- `ensureWebMcpInitialized()` retries initialization up to **5 times, 800 ms apart**, until a target that actually exposes `registerTool` is found — covering late-injected polyfills.
+- `registerWebMcpTool(tool)` and `getModelContextTargets()` register a single tool across every target, de-duplicating by tool name.
+- Each tool publishes `parameters`, `schema`, and `handler` aliases of its schema/executor so both the Model Context API and WebMCP inspector variants can read it.
+- On import the module auto-runs initialization, publishes `window.__webMcpTools`, and re-initializes on the `modelContextReady` / `modelcontextready` window events.
+
 ## The game bridge
 
 The React dashboard registers a bridge with `setActiveGameBridge(bridge)`. The tools delegate to it:

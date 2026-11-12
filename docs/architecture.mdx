@@ -80,7 +80,7 @@ description: Project structure, game state flow, and key architectural patterns.
 
 ### `index.html`
 
-Minimal HTML shell containing a `#root` div and the module script import. It also declares the app's **Content-Security-Policy**, restricting `connect-src` to the Faro collector, the allow-listed AI provider hosts, and localhost dev sockets.
+Minimal HTML shell containing a `#root` div and the module script import. It also declares the app's **Content-Security-Policy**: `script-src` allows the Stockfish CDN and Cloudflare Insights, while `connect-src` is restricted to the Faro collector, the allow-listed AI provider hosts, and localhost dev sockets.
 
 ### `src/main.jsx`
 
@@ -125,7 +125,7 @@ The Stockfish WebAssembly engine is loaded from a CDN using a **Blob URL + `impo
 
 ### WebMCP Game Bridge
 
-The Dashboard registers a live **bridge** with the WebMCP service so tools can read state and paint the board:
+The Dashboard registers a live **bridge** with the WebMCP service (`setActiveGameBridge`) so tools can read state and paint the board, and it initializes the registry with `initWebMcp()` + `ensureWebMcpInitialized()` (which retries until a `modelContext` target is available):
 
 ```javascript
 setActiveGameBridge({
