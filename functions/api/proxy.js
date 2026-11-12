@@ -11,7 +11,8 @@ const ALLOWED_TARGET_HOSTS = new Set([
   'ollama.com',
   'api.mistral.ai',
   'router.requesty.ai',
-  'api.tokenfactory.nebius.com'
+  'api.tokenfactory.nebius.com',
+  'openrouter.ai'
 ]);
 
 function isAllowedTarget(targetUrl) {
@@ -34,7 +35,7 @@ export async function onRequestOptions() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, HTTP-Referer, X-Title',
       'Access-Control-Max-Age': '86400'
     }
   });
@@ -74,6 +75,12 @@ export async function onRequestPost(context) {
     };
     if (headers && typeof headers.Authorization === 'string' && headers.Authorization) {
       forwardHeaders.Authorization = headers.Authorization;
+    }
+    if (headers && typeof headers['HTTP-Referer'] === 'string' && headers['HTTP-Referer']) {
+      forwardHeaders['HTTP-Referer'] = headers['HTTP-Referer'];
+    }
+    if (headers && typeof headers['X-Title'] === 'string' && headers['X-Title']) {
+      forwardHeaders['X-Title'] = headers['X-Title'];
     }
 
     const method = typeof reqMethod === 'string' && reqMethod ? reqMethod.toUpperCase() : 'POST';

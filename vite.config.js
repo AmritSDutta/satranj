@@ -146,7 +146,8 @@ function viteWebMcpPlugin() {
                 'ollama.com',
                 'api.mistral.ai',
                 'router.requesty.ai',
-                'api.tokenfactory.nebius.com'
+                'api.tokenfactory.nebius.com',
+                'openrouter.ai'
               ];
 
               const parsedHost = parsed ? parsed.hostname.toLowerCase() : '';
@@ -179,6 +180,12 @@ function viteWebMcpPlugin() {
               };
               if (headers && typeof headers.Authorization === 'string' && headers.Authorization) {
                 forwardHeaders.Authorization = headers.Authorization;
+              }
+              if (headers && typeof headers['HTTP-Referer'] === 'string' && headers['HTTP-Referer']) {
+                forwardHeaders['HTTP-Referer'] = headers['HTTP-Referer'];
+              }
+              if (headers && typeof headers['X-Title'] === 'string' && headers['X-Title']) {
+                forwardHeaders['X-Title'] = headers['X-Title'];
               }
 
               const method = typeof reqMethod === 'string' && reqMethod ? reqMethod.toUpperCase() : 'POST';

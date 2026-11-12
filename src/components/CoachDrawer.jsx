@@ -49,7 +49,8 @@ export default function CoachDrawer({
       setModel(savedModel);
     } else {
       if (targetProvider === 'gemini') setModel('gemini-2.5-flash');
-      else if (targetProvider === 'nebius') setModel('nvidia/nemotron-3-super-120b-a12b');
+      else if (targetProvider === 'openrouter') setModel('openrouter/free');
+      else if (targetProvider === 'nebius') setModel('MiniMaxAI/MiniMax-M3.1-Flash');
       else if (targetProvider === 'openai') setModel('gpt-4o-mini');
       else if (targetProvider === 'ollama') setModel('llama3.2');
     }
@@ -59,6 +60,7 @@ export default function CoachDrawer({
       setEndpoint(savedEndpoint);
     } else {
       if (targetProvider === 'nebius') setEndpoint('https://api.tokenfactory.nebius.com/v1');
+      else if (targetProvider === 'openrouter') setEndpoint('https://openrouter.ai/api/v1');
       else if (targetProvider === 'ollama') setEndpoint('http://localhost:11434');
       else setEndpoint('');
     }
@@ -162,10 +164,16 @@ export default function CoachDrawer({
       // Prepare conversation history
       const chatMessages = [
         { role: 'system', content: COACH_SYSTEM_PROMPT },
-        ...newMessages.map((m) => ({
-          role: m.role,
-          content: m.text
-        }))
+        ...newMessages.map((m) => {
+          const msg = {
+            role: m.role,
+            content: m.text
+          };
+          if (m.reasoning_details !== undefined) {
+            msg.reasoning_details = m.reasoning_details;
+          }
+          return msg;
+        })
       ];
 
       // Convert WebMCP tool schemas for provider
@@ -179,9 +187,13 @@ export default function CoachDrawer({
       let currentMessages = chatMessages;
       let finalContent = '';
       let suggestedMoves = [];
+      let lastReasoningDetails = null;
 
       for (let turn = 0; turn < 4; turn++) {
         const result = await llm.chat(currentMessages, toolDecls);
+        if (result.assistantMessage?.reasoning_details !== undefined) {
+          lastReasoningDetails = result.assistantMessage.reasoning_details;
+        }
 
         if (!result.toolCalls || result.toolCalls.length === 0) {
           finalContent = result.content;
@@ -213,7 +225,8 @@ export default function CoachDrawer({
             sender: `${provider.toUpperCase()} Coach`,
             role: 'assistant',
             text: finalContent,
-            suggestedMoves
+            suggestedMoves,
+            ...(lastReasoningDetails !== null ? { reasoning_details: lastReasoningDetails } : {})
           }
         ]);
       }
@@ -306,6 +319,7 @@ export default function CoachDrawer({
                   onChange={(e) => handleProviderChange(e.target.value)}
                 >
                   <option value="gemini">Google Gemini (Recommended)</option>
+                  <option value="openrouter">OpenRouter (Free / Multi-Model)</option>
                   <option value="nebius">Nebius Token Factory</option>
                   <option value="openai">OpenAI</option>
                   <option value="ollama">Ollama (Localhost)</option>
@@ -361,13 +375,19 @@ export default function CoachDrawer({
                 />
               </div>
 
-              {(provider === 'ollama' || provider === 'nebius') && (
+              {(provider === 'ollama' || provider === 'nebius' || provider === 'openrouter') && (
                 <div>
                   <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Endpoint URL</label>
                   <input
                     type="text"
                     className="coach-input-field"
-                    placeholder={provider === 'nebius' ? 'https://api.tokenfactory.nebius.com/v1' : 'http://localhost:11434'}
+                    placeholder={
+                      provider === 'nebius'
+                        ? 'https://api.tokenfactory.nebius.com/v1'
+                        : provider === 'openrouter'
+                          ? 'https://openrouter.ai/api/v1'
+                          : 'http://localhost:11434'
+                    }
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
                   />

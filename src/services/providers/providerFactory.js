@@ -10,13 +10,28 @@ export function createLlmProvider(options = {}) {
         {
           id: 'nebius',
           name: 'Nebius Token Factory',
-          defaultModel: 'nvidia/nemotron-3-super-120b-a12b',
+          defaultModel: 'MiniMaxAI/MiniMax-M3.1-Flash',
           defaultEndpoint: 'https://api.tokenfactory.nebius.com/v1'
         },
         {
           apiKey: options.apiKey,
-          model: options.model || 'nvidia/nemotron-3-super-120b-a12b',
+          model: options.model || 'MiniMaxAI/MiniMax-M3.1-Flash',
           endpoint: options.endpoint || 'https://api.tokenfactory.nebius.com/v1'
+        }
+      );
+
+    case 'openrouter':
+      return new OpenAICompatibleProvider(
+        {
+          id: 'openrouter',
+          name: 'OpenRouter',
+          defaultModel: 'openrouter/free',
+          defaultEndpoint: 'https://openrouter.ai/api/v1'
+        },
+        {
+          apiKey: options.apiKey,
+          model: options.model || 'openrouter/free',
+          endpoint: options.endpoint || 'https://openrouter.ai/api/v1'
         }
       );
 

@@ -7,11 +7,15 @@ export class OpenAICompatibleProvider {
     this.label = profile.label || profile.name;
     this.apiKey = (config.apiKey || '').trim();
     this.model = config.model?.trim() || profile.defaultModel;
-    const rawEndpoint = config.endpoint?.trim() || profile.defaultEndpoint;
-    const clean = (rawEndpoint || '').replace(/\/+$/, '');
-    this.endpoint = clean.endsWith('/chat/completions')
-      ? clean
-      : (clean ? `${clean}/v1/chat/completions` : 'https://api.openai.com/v1/chat/completions');
+    const rawEndpoint = config.endpoint?.trim() || profile.defaultEndpoint || 'https://api.openai.com/v1';
+    const clean = rawEndpoint.replace(/\/+$/, '');
+    if (clean.endsWith('/chat/completions')) {
+      this.endpoint = clean;
+    } else if (clean.endsWith('/v1')) {
+      this.endpoint = `${clean}/chat/completions`;
+    } else {
+      this.endpoint = `${clean}/v1/chat/completions`;
+    }
   }
 
   async executePost(targetUrl, headers, body) {
@@ -75,10 +79,31 @@ export class OpenAICompatibleProvider {
       headers.Authorization = `Bearer ${this.apiKey}`;
     }
 
+    if (this.id === 'openrouter') {
+      headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://satranj.app';
+      headers['X-Title'] = 'Satranj Chess';
+    }
+
+    const formattedMessages = messages.map((m) => {
+      const msg = {
+        role: m.role,
+        content: m.content
+      };
+      if (m.tool_calls) msg.tool_calls = m.tool_calls;
+      if (m.tool_call_id) msg.tool_call_id = m.tool_call_id;
+      if (m.name) msg.name = m.name;
+      if (m.reasoning_details !== undefined) msg.reasoning_details = m.reasoning_details;
+      return msg;
+    });
+
     const payload = {
       model: this.model,
-      messages
+      messages: formattedMessages
     };
+
+    if (this.id === 'openrouter') {
+      payload.reasoning = { enabled: true };
+    }
 
     if (tools && tools.length > 0) {
       payload.tools = tools.map((t) => ({ type: 'function', function: t }));
@@ -116,14 +141,19 @@ export class OpenAICompatibleProvider {
       }
     }
 
+    const assistantMessage = {
+      role: 'assistant',
+      content: message.content || null,
+      tool_calls: message.tool_calls
+    };
+    if (message.reasoning_details !== undefined) {
+      assistantMessage.reasoning_details = message.reasoning_details;
+    }
+
     return {
       content: message.content || '',
       toolCalls,
-      assistantMessage: {
-        role: 'assistant',
-        content: message.content || null,
-        tool_calls: message.tool_calls
-      }
+      assistantMessage
     };
   }
 }

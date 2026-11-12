@@ -34,7 +34,8 @@
 
 export const SUPPORTED_PROVIDERS = [
   { id: 'gemini', name: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
-  { id: 'nebius', name: 'Nebius Token Factory', defaultModel: 'nvidia/nemotron-3-super-120b-a12b', defaultEndpoint: 'https://api.tokenfactory.nebius.com/v1' },
+  { id: 'openrouter', name: 'OpenRouter', defaultModel: 'openrouter/free', defaultEndpoint: 'https://openrouter.ai/api/v1' },
+  { id: 'nebius', name: 'Nebius Token Factory', defaultModel: 'MiniMaxAI/MiniMax-M3.1-Flash', defaultEndpoint: 'https://api.tokenfactory.nebius.com/v1' },
   { id: 'openai', name: 'OpenAI', defaultModel: 'gpt-4o-mini' },
   { id: 'ollama', name: 'Ollama (Local)', defaultModel: 'llama3.2', defaultEndpoint: 'http://localhost:11434' }
 ];
