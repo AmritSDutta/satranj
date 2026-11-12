@@ -13,7 +13,7 @@ import CapturedPieces from './CapturedPieces';
 import AboutModal from './AboutModal';
 import GameAnalysisModal from './GameAnalysisModal';
 import CoachDrawer from './CoachDrawer';
-import { initWebMcp, setActiveGameBridge, enqueueChatMessage } from '../services/webMcpService';
+import { initWebMcp, ensureWebMcpInitialized, setActiveGameBridge, enqueueChatMessage } from '../services/webMcpService';
 import { saveActiveGame, loadActiveGame, clearActiveGame } from '../services/storage';
 
 // Board Theme Colors mapping
@@ -141,9 +141,10 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Initialize WebMCP on mount
+  // Initialize WebMCP on mount with retry guarantee
   useEffect(() => {
     initWebMcp();
+    ensureWebMcpInitialized();
   }, []);
 
   // Synchronize ActiveGameBridge with WebMCP

@@ -1,3 +1,5 @@
+import { parseApiError } from './types';
+
 export class GeminiProvider {
   constructor(apiKey, model = 'gemini-2.5-flash') {
     this.id = 'gemini';
@@ -8,6 +10,9 @@ export class GeminiProvider {
 
   async executePost(targetUrl, body) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
+
       const proxyRes = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -15,13 +20,18 @@ export class GeminiProvider {
           targetUrl,
           headers: { 'Content-Type': 'application/json' },
           body
-        })
+        }),
+        signal: controller.signal
       });
-      if (proxyRes.status !== 404 && proxyRes.status !== 502) {
+      clearTimeout(timeoutId);
+
+      // If proxy returned a valid client status (< 500) and not 404, return it.
+      // If proxy timed out or crashed (500, 502, 504, 524), fall back to direct browser fetch.
+      if (proxyRes.status < 500 && proxyRes.status !== 404) {
         return proxyRes;
       }
     } catch {
-      // Fallback to direct fetch
+      // Proxy aborted or network failed -> fallback to direct fetch
     }
 
     return fetch(targetUrl, {
@@ -48,8 +58,8 @@ export class GeminiProvider {
     const response = await this.executePost(url, body);
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Gemini API Error (${response.status}): ${err}`);
+      const errMsg = await parseApiError(response, 'Gemini');
+      throw new Error(errMsg);
     }
 
     const data = await response.json();
@@ -139,8 +149,8 @@ export class GeminiProvider {
     const response = await this.executePost(url, body);
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Gemini API Error (${response.status}): ${err}`);
+      const errMsg = await parseApiError(response, 'Gemini');
+      throw new Error(errMsg);
     }
 
     const data = await response.json();

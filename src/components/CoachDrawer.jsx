@@ -39,23 +39,45 @@ export default function CoachDrawer({
 
   const messagesEndRef = useRef(null);
 
-  // Load encrypted settings on mount
+  // Load encrypted credentials and defaults for a specific provider
+  const loadProviderConfig = async (targetProvider) => {
+    const savedKey = await getItemEncrypted(`satranj_${targetProvider}_api_key`);
+    setApiKey(savedKey || '');
+
+    const savedModel = await getItemEncrypted(`satranj_${targetProvider}_model`);
+    if (savedModel) {
+      setModel(savedModel);
+    } else {
+      if (targetProvider === 'gemini') setModel('gemini-2.5-flash');
+      else if (targetProvider === 'nebius') setModel('nvidia/nemotron-3-super-120b-a12b');
+      else if (targetProvider === 'openai') setModel('gpt-4o-mini');
+      else if (targetProvider === 'ollama') setModel('llama3.2');
+    }
+
+    const savedEndpoint = await getItemEncrypted(`satranj_${targetProvider}_endpoint`);
+    if (savedEndpoint) {
+      setEndpoint(savedEndpoint);
+    } else {
+      if (targetProvider === 'nebius') setEndpoint('https://api.tokenfactory.nebius.com/v1');
+      else if (targetProvider === 'ollama') setEndpoint('http://localhost:11434');
+      else setEndpoint('');
+    }
+  };
+
+  // Load encrypted settings on mount or drawer open
   useEffect(() => {
     async function loadSettings() {
       const savedProvider = (await getItemEncrypted('satranj_active_provider')) || 'gemini';
       setProvider(savedProvider);
-
-      const savedKey = await getItemEncrypted(`satranj_${savedProvider}_api_key`);
-      setApiKey(savedKey || '');
-
-      const savedModel = await getItemEncrypted(`satranj_${savedProvider}_model`);
-      if (savedModel) setModel(savedModel);
-
-      const savedEndpoint = await getItemEncrypted(`satranj_${savedProvider}_endpoint`);
-      if (savedEndpoint) setEndpoint(savedEndpoint);
+      await loadProviderConfig(savedProvider);
     }
     loadSettings();
   }, [isOpen]);
+
+  const handleProviderChange = async (nextProvider) => {
+    setProvider(nextProvider);
+    await loadProviderConfig(nextProvider);
+  };
 
   // Auto-scroll chat
   useEffect(() => {
@@ -196,13 +218,15 @@ export default function CoachDrawer({
         ]);
       }
     } catch (err) {
+      const rawText = err?.message || 'Error communicating with coach';
+      const cleanText = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       setMessages((prev) => [
         ...prev,
         {
           id: `err_${Date.now()}`,
           sender: 'Coach System',
           role: 'assistant',
-          text: `⚠️ ${err.message || 'Error communicating with coach'}`
+          text: `⚠️ ${cleanText}`
         }
       ]);
     } finally {
@@ -279,21 +303,7 @@ export default function CoachDrawer({
                 <select
                   className="coach-input-field"
                   value={provider}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setProvider(next);
-                    if (next === 'gemini') {
-                      setModel('gemini-2.5-flash');
-                    } else if (next === 'nebius') {
-                      setModel('nvidia/nemotron-3-super-120b-a12b');
-                      setEndpoint('https://api.tokenfactory.nebius.com/v1');
-                    } else if (next === 'openai') {
-                      setModel('gpt-4o-mini');
-                    } else if (next === 'ollama') {
-                      setModel('llama3.2');
-                      setEndpoint('http://localhost:11434');
-                    }
-                  }}
+                  onChange={(e) => handleProviderChange(e.target.value)}
                 >
                   <option value="gemini">Google Gemini (Recommended)</option>
                   <option value="nebius">Nebius Token Factory</option>
@@ -304,9 +314,35 @@ export default function CoachDrawer({
 
               {provider !== 'ollama' && (
                 <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>API Key</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {provider === 'nebius' ? 'Nebius Token' : `${provider.toUpperCase()} API Key`}
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: apiKey ? 'var(--success)' : 'var(--text-muted)' }}>
+                        {apiKey ? '● Saved' : '○ Not Set'}
+                      </span>
+                      {apiKey && (
+                        <button
+                          type="button"
+                          onClick={() => setApiKey('')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--danger)',
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <input
                     type="password"
+                    autoComplete="new-password"
                     className="coach-input-field"
                     placeholder={`Enter ${provider === 'nebius' ? 'Nebius' : provider} key`}
                     value={apiKey}

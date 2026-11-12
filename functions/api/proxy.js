@@ -86,7 +86,12 @@ export async function onRequestPost(context) {
       fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    fetchOptions.signal = controller.signal;
+
     const response = await fetch(targetUrl, fetchOptions);
+    clearTimeout(timeoutId);
     const data = await response.text();
 
     return new Response(data, {
@@ -97,12 +102,20 @@ export async function onRequestPost(context) {
       }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err?.message || 'Cloudflare proxy error' }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+    const isTimeout = err?.name === 'AbortError';
+    return new Response(
+      JSON.stringify({
+        error: isTimeout
+          ? 'Upstream AI provider request timed out after 25s'
+          : err?.message || 'Cloudflare proxy error'
+      }),
+      {
+        status: isTimeout ? 504 : 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
       }
-    });
+    );
   }
 }

@@ -236,8 +236,56 @@ export const satranjWebMcpTools = [
   highlightBoardTool
 ];
 
-export function initWebMcp() {
-  if (typeof window === 'undefined') return;
+// Provide specification aliases across Model Context API and WebMCP inspector variations
+for (const tool of satranjWebMcpTools) {
+  tool.parameters = tool.inputSchema;
+  tool.schema = tool.inputSchema;
+  tool.handler = tool.execute;
+}
+
+const targetRegisteredTools = new WeakMap();
+
+export function getModelContextTargets() {
+  const rawTargets = [];
+  if (typeof document !== 'undefined' && document.modelContext?.registerTool) {
+    rawTargets.push(document.modelContext);
+  }
+  if (typeof navigator !== 'undefined' && navigator.modelContext?.registerTool) {
+    rawTargets.push(navigator.modelContext);
+  }
+  if (typeof window !== 'undefined' && window.modelContext?.registerTool) {
+    rawTargets.push(window.modelContext);
+  }
+  return Array.from(new Set(rawTargets));
+}
+
+export async function registerWebMcpTool(tool) {
+  const targets = getModelContextTargets();
+  if (targets.length === 0) return false;
+
+  for (const target of targets) {
+    let regSet = targetRegisteredTools.get(target);
+    if (!regSet) {
+      regSet = new Set();
+      targetRegisteredTools.set(target, regSet);
+    }
+    if (regSet.has(tool.name)) continue;
+
+    try {
+      const p = target.registerTool(tool);
+      if (p && typeof p.catch === 'function') {
+        await p.catch(() => {});
+      } else {
+        await p;
+      }
+    } catch {}
+    regSet.add(tool.name);
+  }
+  return true;
+}
+
+export async function initWebMcp() {
+  if (typeof window === 'undefined') return false;
 
   const patchModelContext = (ctx) => {
     if (!ctx) return;
@@ -257,10 +305,11 @@ export function initWebMcp() {
       }
       if (typeof origRegister === 'function' && origRegister !== ctx.registerTool) {
         try {
-          origRegister.call(ctx, tool);
-        } catch {
-          // ignore
-        }
+          const p = origRegister.call(ctx, tool);
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {});
+          }
+        } catch {}
       }
     };
 
@@ -276,13 +325,65 @@ export function initWebMcp() {
     if (!document.modelContext) document.modelContext = {};
     patchModelContext(document.modelContext);
   }
-  if (!window.modelContext) {
-    window.modelContext = document ? document.modelContext : {};
+  if (typeof window !== 'undefined') {
+    if (!window.modelContext) window.modelContext = document ? document.modelContext : {};
+    patchModelContext(window.modelContext);
   }
-  patchModelContext(window.modelContext);
-
   if (typeof navigator !== 'undefined') {
     if (!navigator.modelContext) navigator.modelContext = window.modelContext;
     patchModelContext(navigator.modelContext);
   }
+
+  const targets = getModelContextTargets();
+  for (const tool of satranjWebMcpTools) {
+    for (const target of targets) {
+      let regSet = targetRegisteredTools.get(target);
+      if (!regSet) {
+        regSet = new Set();
+        targetRegisteredTools.set(target, regSet);
+      }
+      if (regSet.has(tool.name)) continue;
+
+      try {
+        const p = target.registerTool(tool);
+        if (p && typeof p.catch === 'function') {
+          await p.catch(() => {});
+        } else {
+          await p;
+        }
+      } catch {}
+      regSet.add(tool.name);
+    }
+  }
+
+  return true;
+}
+
+const WEBMCP_INIT_MAX_ATTEMPTS = 5;
+const WEBMCP_INIT_RETRY_DELAY_MS = 800;
+
+export async function ensureWebMcpInitialized() {
+  for (let attempt = 1; attempt <= WEBMCP_INIT_MAX_ATTEMPTS; attempt++) {
+    const ok = await initWebMcp();
+    if (ok && getModelContextTargets().length > 0) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, WEBMCP_INIT_RETRY_DELAY_MS));
+  }
+  return false;
+}
+
+// Module-level auto-run and extension listener
+if (typeof window !== 'undefined') {
+  window.__webMcpTools = satranjWebMcpTools;
+
+  window.addEventListener('modelContextReady', () => {
+    initWebMcp().catch(() => {});
+  });
+  window.addEventListener('modelcontextready', () => {
+    initWebMcp().catch(() => {});
+  });
+
+  initWebMcp().catch(() => {});
+  ensureWebMcpInitialized();
 }

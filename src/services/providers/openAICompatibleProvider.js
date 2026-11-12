@@ -1,3 +1,5 @@
+import { parseApiError } from './types';
+
 export class OpenAICompatibleProvider {
   constructor(profile, config = {}) {
     this.id = profile.id;
@@ -22,6 +24,9 @@ export class OpenAICompatibleProvider {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
+
       const proxyRes = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,9 +34,12 @@ export class OpenAICompatibleProvider {
           targetUrl,
           headers,
           body
-        })
+        }),
+        signal: controller.signal
       });
-      if (proxyRes.status !== 404 && proxyRes.status !== 502) {
+      clearTimeout(timeoutId);
+
+      if (proxyRes.status < 500 && proxyRes.status !== 404) {
         return proxyRes;
       }
     } catch {
@@ -79,14 +87,8 @@ export class OpenAICompatibleProvider {
     const response = await this.executePost(this.endpoint, headers, payload);
 
     if (!response.ok) {
-      let errText = '';
-      try {
-        const errJson = await response.json();
-        errText = errJson.error?.message || JSON.stringify(errJson);
-      } catch {
-        errText = await response.text();
-      }
-      throw new Error(`${this.label} API Error (${response.status}): ${errText}`);
+      const errMsg = await parseApiError(response, this.label || this.name);
+      throw new Error(errMsg);
     }
 
     const data = await response.json();
